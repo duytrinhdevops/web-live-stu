@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Translate Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    #items {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    #items.hidden { display: none; }
+
+    .item {
+      background: rgba(0, 0, 0, 0.60);
+      border-left: 3px solid #a78bfa;
+      border-radius: 10px;
+      padding: 8px 14px;
+      backdrop-filter: blur(5px);
+      animation: slideIn 0.25s ease;
+      transition: opacity 0.5s ease;
+    }
+
+    .item.fading { opacity: 0; }
+
+    .row-user {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+
+    .username {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    }
+
+    .original {
+      font-size: 11px;
+      color: #94a3b8;
+      font-style: italic;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+
+    .translated {
+      font-size: 15px;
+      color: #f1f5f9;
+      font-weight: 500;
+      word-break: break-word;
+      line-height: 1.5;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+      margin-top: 1px;
+    }
+
+    .lang-badge {
+      font-size: 10px;
+      background: #a78bfa33;
+      color: #c4b5fd;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(18px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="items"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket    = io({ transports: ['websocket', 'polling'], reconnection: true });
+    const container = document.getElementById('items');
+
+    const MAX_ITEMS   = 6;
+    const LIFETIME_MS = 10000;
+    const FADE_MS     = 500;
+
+    const COLORS = ['#fe2c55','#25f4ee','#ffd700','#69c9d0','#a78bfa','#34d399','#fb923c'];
+    const colorMap = new Map();
+    function userColor(name) {
+      if (!colorMap.has(name)) colorMap.set(name, COLORS[colorMap.size % COLORS.length]);
+      return colorMap.get(name);
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    let targetLang = 'en';
+
+    function addItem(username, original, translated) {
+      while (container.children.length >= MAX_ITEMS) {
+        container.removeChild(container.firstChild);
+      }
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML =
+        `<div class="row-user">` +
+          `<span class="username" style="color:${userColor(username)}">@${esc(username)}</span>` +
+          `<span class="lang-badge">${esc(targetLang)}</span>` +
+        `</div>` +
+        `<div class="original">${esc(original)}</div>` +
+        `<div class="translated">${esc(translated)}</div>`;
+      container.appendChild(div);
+
+      const t = setTimeout(() => {
+        div.classList.add('fading');
+        setTimeout(() => div.remove(), FADE_MS);
+      }, LIFETIME_MS);
+      div._t = t;
+    }
+
+    function applyConfig(cfg) {
+      if (cfg.translateEnabled !== undefined)
+        container.classList.toggle('hidden', !cfg.translateEnabled);
+      if (cfg.translateTargetLang !== undefined)
+        targetLang = cfg.translateTargetLang;
+    }
+
+    socket.on('connect', () => socket.emit('jarStateRequest'));
+    socket.on('jarStateInit', state => { if (state) applyConfig(state); });
+    socket.on('translateConfig', cfg => { if (cfg) applyConfig(cfg); });
+
+    socket.on('translateDrop', data => {
+      if (!data || container.classList.contains('hidden')) return;
+      addItem(data.username || 'Unknown', data.original || '', data.translated || '');
+    });
+
+    socket.on('translateClear', () => {
+      for (const el of [...container.children]) {
+        clearTimeout(el._t);
+        el.remove();
+      }
+    });
+  </script>
+</body>
+</html>

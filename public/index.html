@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok Live Effect Control</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #0f1117;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      padding: 14px 18px;
+      background: #171a23;
+      border-bottom: 1px solid #2b3040;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .box {
+      background: #171a23;
+      border: 1px solid #2b3040;
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .row span { min-width: 170px; font-size: 13px; }
+    input[type="text"] {
+      flex: 1;
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #fff;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    input[type="range"] { flex: 1; }
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+      background: #334155;
+    }
+    .btn-green { background: #10b981; }
+    .btn-red { background: #ef4444; }
+    .btn-blue { background: #3b82f6; }
+    .status {
+      margin-top: 8px;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      background: #1f2937;
+    }
+    .ok { background: rgba(16,185,129,.2); border: 1px solid #10b981; }
+    .bad { background: rgba(239,68,68,.2); border: 1px solid #ef4444; }
+    .warn { background: rgba(245,158,11,.2); border: 1px solid #f59e0b; }
+    h3 { margin: 0 0 10px; color: #93c5fd; }
+    .group-title { margin: 10px 0 8px; color: #c4b5fd; font-size: 13px; font-weight: bold; }
+    #stickerControls > div { margin: 10px 0; padding: 10px; border-radius: 8px; background: rgba(0,0,0,.25); }
+  </style>
+</head>
+<body>
+  <header>TikTok LIVE Effect Control - Develop By DuyTrinh</header>
+  <main class="wrap">
+    <section class="box">
+      <h3>Kết nối TikTok LIVE</h3>
+      <div class="row">
+        <span>ID TikTok</span>
+        <input id="tiktokId" type="text" placeholder="ví dụ: duylamidol" />
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-green" onclick="connectLive()">Connect</button>
+        <button class="btn btn-red" onclick="disconnectLive()">Disconnect</button>
+      </div>
+      <div id="liveStatus" class="status bad">Not connected</div>
+    </section>
+
+    <section class="box">
+      <h3>Cài đặt hiệu ứng: lọ quà, hộp quà, sticker</h3>
+
+      <div class="group-title">Tất cả hiệu ứng</div>
+      <div class="row">
+        <span>Tất cả Trái / Phải</span>
+        <input id="slAllX" type="range" min="-600" max="600" value="0" step="1" oninput="onEffectSlider('allX', this)">
+      </div>
+      <div class="row">
+        <span>Tất cả Lên / Xuống</span>
+        <input id="slAllY" type="range" min="-900" max="900" value="0" step="1" oninput="onEffectSlider('allY', this)">
+      </div>
+      <div class="row">
+        <span>Tất cả To / Nhỏ</span>
+        <input id="slAllScale" type="range" min="20" max="300" value="100" step="1" oninput="onEffectSlider('allScale', this)">
+      </div>
+
+      <div class="group-title">Lọ quà (ảnh nền hiển thị)</div>
+      <div class="row">
+        <span>Upload ảnh lọ</span>
+        <input type="file" id="jarImageFile" accept="image/*" style="font-size:12px;max-width:220px">
+        <span id="jarImageStatus" style="font-size:11px;color:#10b981"></span>
+      </div>
+      <div class="row">
+        <span>Chiều rộng</span>
+        <input id="slJarWidth" type="range" min="40" max="230" value="100" step="1" oninput="onEffectSlider('jarWidth', this)">
+      </div>
+      <div class="row">
+        <span>Chiều cao</span>
+        <input id="slJarHeight" type="range" min="40" max="230" value="100" step="1" oninput="onEffectSlider('jarHeight', this)">
+      </div>
+      <div class="row">
+        <span>Trái / Phải</span>
+        <input id="slJarX" type="range" min="-600" max="600" value="0" step="1" oninput="onEffectSlider('jarX', this)">
+      </div>
+      <div class="row">
+        <span>Lên / Xuống</span>
+        <input id="slJarY" type="range" min="-900" max="900" value="0" step="1" oninput="onEffectSlider('jarY', this)">
+      </div>
+
+      <div class="group-title">Hộp quà — Vùng chứa (physics)</div>
+      <div class="row">
+        <span>Chiều rộng vùng</span>
+        <input id="slGiftWidth" type="range" min="50" max="180" value="100" step="1" oninput="onEffectSlider('giftWidth', this)">
+      </div>
+      <div class="row">
+        <span>Chiều cao vùng</span>
+        <input id="slGiftHeight" type="range" min="50" max="180" value="100" step="1" oninput="onEffectSlider('giftHeight', this)">
+      </div>
+      <div class="row">
+        <span>Trái / Phải vùng</span>
+        <input id="slGiftX" type="range" min="-600" max="600" value="0" step="1" oninput="onEffectSlider('giftX', this)">
+      </div>
+      <div class="row">
+        <span>Lên / Xuống vùng</span>
+        <input id="slGiftY" type="range" min="-900" max="900" value="0" step="1" oninput="onEffectSlider('giftY', this)">
+      </div>
+
+      <div class="group-title">Kích cỡ quà &amp; vật lý</div>
+      <div class="row">
+        <span>Kích cỡ quà</span>
+        <input id="slGiftSize" type="range" min="40" max="180" value="100" step="1" oninput="onEffectSlider('giftSize', this)">
+      </div>
+      <div class="row">
+        <span>Khoảng cách (độ nảy)</span>
+        <input id="slGiftBounce" type="range" min="0" max="35" value="2" step="1" oninput="onEffectSlider('giftBounce', this)">
+      </div>
+      <div class="row">
+        <span>Độ sát (ma sát)</span>
+        <input id="slGiftFriction" type="range" min="10" max="100" value="60" step="1" oninput="onEffectSlider('giftFriction', this)">
+      </div>
+
+      <div class="group-title">Hiệu ứng vòng miệng bình</div>
+      <div class="row">
+        <span>Độ mờ vòng miệng</span>
+        <input id="slMouthOpacity" type="range" min="0" max="100" value="0" step="1" oninput="onEffectSlider('mouthOpacity', this)">
+      </div>
+      <div class="row">
+        <span>Vòng — Trái / Phải</span>
+        <input id="slMouthX" type="range" min="-400" max="400" value="0" step="1" oninput="onEffectSlider('mouthX', this)">
+      </div>
+      <div class="row">
+        <span>Vòng — Lên / Xuống</span>
+        <input id="slMouthY" type="range" min="-400" max="400" value="0" step="1" oninput="onEffectSlider('mouthY', this)">
+      </div>
+      <div class="row">
+        <span>Vòng — Kích cỡ</span>
+        <input id="slMouthScale" type="range" min="20" max="300" value="100" step="1" oninput="onEffectSlider('mouthScale', this)">
+      </div>
+
+      <div class="group-title">Sticker custom (5 ảnh độc lập)</div>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:8px">Mỗi sticker có thể upload ảnh riêng, chỉnh size và vị trí riêng.</div>
+      <div id="stickerControls"></div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-green" onclick="testRain()">Test Rain</button>
+        <button class="btn btn-red" onclick="testReset()">Reset Jar</button>
+        <button class="btn btn-blue" onclick="resetEffectControl()">Reset Vị Trí</button>
+        <button class="btn" onclick="saveConfig()">Lưu Config</button>
+      </div>
+      <div id="saveNotice" style="margin-top:8px;font-size:13px;color:#10b981;min-height:18px"></div>
+    </section>
+
+    <section class="box">
+      <h3>Chị Google đọc comment</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
+        Tự động đọc to comment khi nhận từ TikTok Live. Âm thanh phát ngay trên trang này — không cần OBS.
+      </div>
+      <div class="row">
+        <span>Đọc comment</span>
+        <button id="ttsToggleBtn" class="btn btn-green" onclick="toggleTts()">Bật đọc</button>
+      </div>
+      <div class="row">
+        <span>Âm lượng</span>
+        <input id="slTtsVolume" type="range" min="0" max="100" value="80" step="1" oninput="onTtsSlider()">
+        <span id="ttsVolumeVal" style="min-width:32px;font-size:12px;color:#fff">80%</span>
+      </div>
+      <div class="row">
+        <span>Tốc độ đọc</span>
+        <input id="slTtsRate" type="range" min="50" max="200" value="100" step="5" oninput="onTtsSlider()">
+        <span id="ttsRateVal" style="min-width:32px;font-size:12px;color:#fff">1.0×</span>
+      </div>
+      <div class="row">
+        <span>Test giọng</span>
+        <button class="btn btn-blue" onclick="testTts()">Test chị Google</button>
+      </div>
+      <div class="row">
+        <span>Ngôn ngữ</span>
+        <select id="selTtsLang" onchange="onTtsSlider()" style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+          <option value="vi">Tiếng Việt (vi)</option>
+          <option value="en">English (en)</option>
+          <option value="zh-CN">中文 (zh-CN)</option>
+          <option value="ja">日本語 (ja)</option>
+          <option value="ko">한국어 (ko)</option>
+        </select>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid #1e293b;padding-top:12px">
+        <div style="font-size:13px;font-weight:600;color:#93c5fd;margin-bottom:8px">Từ bỏ qua (không đọc)</div>
+        <div style="font-size:12px;color:#9ca3af;margin-bottom:8px">Mỗi từ / ký tự trong danh sách sẽ bị xoá khỏi text trước khi đọc.</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input id="inpSkipWord" type="text" placeholder="Thêm từ bỏ qua..." style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px" onkeydown="if(event.key==='Enter')addSkipWord()">
+          <button class="btn btn-blue" onclick="addSkipWord()">Thêm</button>
+        </div>
+        <div id="skipWordList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <div style="margin-top:14px;border-top:1px solid #1e293b;padding-top:12px">
+        <div style="font-size:13px;font-weight:600;color:#93c5fd;margin-bottom:8px">Chuyển đổi từ</div>
+        <div style="font-size:12px;color:#9ca3af;margin-bottom:8px">Thay từ viết tắt → từ đầy đủ trước khi đọc. VD: "dk" → "được".</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+          <input id="inpReplFrom" type="text" placeholder="Từ gốc..." style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px" onkeydown="if(event.key==='Enter')document.getElementById('inpReplTo').focus()">
+          <span style="color:#9ca3af;font-size:13px">→</span>
+          <input id="inpReplTo" type="text" placeholder="Thay bằng..." style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px" onkeydown="if(event.key==='Enter')addReplacement()">
+          <button class="btn btn-blue" onclick="addReplacement()">Thêm</button>
+        </div>
+        <div id="replacementList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </section>
+
+    <section class="box">
+      <h3>Comment TikTok Live</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
+        OBS Browser Source: <code style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#93c5fd">http://localhost:3000/comment.html</code>
+      </div>
+      <div class="row">
+        <span>Hiển thị comment</span>
+        <button id="commentToggleBtn" class="btn btn-red" onclick="toggleComment()">Ẩn Comment</button>
+      </div>
+      <div class="row">
+        <span>Cỡ chữ</span>
+        <input id="slCommentSize" type="range" min="12" max="40" value="18" step="1" oninput="onCommentSize(this)">
+        <span id="commentSizeVal" style="min-width:32px;font-size:12px;color:#fff">18px</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn btn-red" onclick="clearComments()">Xoá hết comment</button>
+      </div>
+    </section>
+
+    <section class="box">
+      <h3>Dịch comment sang ngôn ngữ khác</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
+        OBS Browser Source: <code style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#93c5fd">http://localhost:3000/translate.html</code>
+      </div>
+      <div class="row">
+        <span>Bật dịch</span>
+        <button id="translateToggleBtn" class="btn btn-green" onclick="toggleTranslate()">Bật</button>
+      </div>
+      <div class="row">
+        <span>Dịch sang</span>
+        <select id="selTranslateLang" onchange="onTranslateLang()" style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+          <option value="en">English (en)</option>
+          <option value="vi">Tiếng Việt (vi)</option>
+          <option value="zh-CN">中文 (zh-CN)</option>
+          <option value="ja">日本語 (ja)</option>
+          <option value="ko">한국어 (ko)</option>
+          <option value="fr">Français (fr)</option>
+          <option value="de">Deutsch (de)</option>
+          <option value="es">Español (es)</option>
+          <option value="th">ภาษาไทย (th)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn btn-red" onclick="clearTranslate()">Xoá hết</button>
+      </div>
+    </section>
+
+    <section class="box">
+      <h3>Dịch giọng nói (Speech → Text → Dịch)</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
+        OBS Browser Source: <code style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#93c5fd">http://localhost:3000/speech-overlay.html</code><br>
+        Cần cài: <code style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#fbbf24">FFmpeg</code> + API key (Groq miễn phí hoặc OpenAI). Tự động chạy khi kết nối TikTok.
+      </div>
+      <div class="row">
+        <span>Bật overlay</span>
+        <button id="speechToggleBtn" class="btn btn-green" onclick="toggleSpeech()">Bật</button>
+      </div>
+      <div class="row">
+        <span>Trạng thái</span>
+        <span id="speechStatusText" style="font-size:12px;color:#64748b">—</span>
+      </div>
+      <div class="row">
+        <span>STT Provider</span>
+        <select id="selSpeechProvider" onchange="onSpeechSettings()" style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+          <option value="groq">Groq (miễn phí)</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </div>
+      <div class="row">
+        <span>API Key</span>
+        <input id="inpSpeechApiKey" type="password" placeholder="sk-..."
+          style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px"
+          onchange="onSpeechSettings()">
+      </div>
+      <div class="row">
+        <span>Giọng nói</span>
+        <select id="selSpeechSource" onchange="onSpeechSettings()" style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+          <option value="vi">Tiếng Việt (vi)</option>
+          <option value="en">English (en)</option>
+          <option value="zh">中文 (zh)</option>
+          <option value="ja">日本語 (ja)</option>
+          <option value="ko">한국어 (ko)</option>
+          <option value="th">ภาษาไทย (th)</option>
+        </select>
+      </div>
+      <div class="row">
+        <span>Dịch sang</span>
+        <select id="selSpeechTarget" onchange="onSpeechSettings()" style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+          <option value="en">English (en)</option>
+          <option value="vi">Tiếng Việt (vi)</option>
+          <option value="zh-CN">中文 (zh-CN)</option>
+          <option value="ja">日本語 (ja)</option>
+          <option value="ko">한국어 (ko)</option>
+          <option value="fr">Français (fr)</option>
+          <option value="de">Deutsch (de)</option>
+          <option value="es">Español (es)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn btn-red" onclick="clearSpeech()">Xoá subtitle</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const liveStatus = document.getElementById('liveStatus');
+
+    function setStatus(type, text) {
+      liveStatus.classList.remove('ok', 'bad', 'warn');
+      liveStatus.classList.add(type);
+      liveStatus.textContent = text;
+    }
+
+    async function connectLive() {
+      const uniqueId = document.getElementById('tiktokId').value.trim();
+      if (!uniqueId) {
+        setStatus('warn', 'Nhập ID TikTok trước khi connect');
+        return;
+      }
+      setStatus('warn', 'Đang connect...');
+      try {
+        const res = await fetch('/tiktok/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uniqueId })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setStatus('bad', data.message || 'Not connected');
+          return;
+        }
+        setStatus('ok', `Connected: ${data.uniqueId}`);
+        socket.emit('jarStateRequest');
+      } catch (err) {
+        setStatus('bad', 'Not connected');
+      }
+    }
+
+    async function disconnectLive() {
+      try {
+        await fetch('/tiktok/disconnect', { method: 'POST' });
+      } finally {
+        setStatus('bad', 'Not connected');
+      }
+    }
+
+    socket.on('tiktokStatus', payload => {
+      if (!payload) return;
+      if (payload.status === 'connecting') setStatus('warn', `Đang connect: ${payload.uniqueId || ''}`.trim());
+      if (payload.status === 'connected') setStatus('ok', `Connected: ${payload.uniqueId || ''}`.trim());
+      if (payload.status === 'disconnected') setStatus('bad', 'Not connected');
+      if (payload.status === 'live_ended') setStatus('warn', 'Phiên live đã kết thúc');
+      if (payload.status === 'error') setStatus('bad', payload.message || 'Not connected');
+    });
+
+    const sliderState = {
+      allX: 0, allY: 0, allScale: 100,
+      jarWidth: 100, jarHeight: 100, jarX: 0, jarY: 0,
+      giftWidth: 100, giftHeight: 100, giftX: 0, giftY: 0,
+      giftSize: 100, giftBounce: 2, giftFriction: 60,
+      mouthOpacity: 0,
+      mouthX: 0, mouthY: 0, mouthScale: 100
+    };
+
+    function sliderId(control) {
+      const map = {
+        allX: 'slAllX', allY: 'slAllY', allScale: 'slAllScale',
+        jarWidth: 'slJarWidth', jarHeight: 'slJarHeight', jarX: 'slJarX', jarY: 'slJarY',
+        giftWidth: 'slGiftWidth', giftHeight: 'slGiftHeight', giftX: 'slGiftX', giftY: 'slGiftY',
+        giftSize: 'slGiftSize', giftBounce: 'slGiftBounce', giftFriction: 'slGiftFriction',
+        mouthOpacity: 'slMouthOpacity',
+        mouthX: 'slMouthX', mouthY: 'slMouthY', mouthScale: 'slMouthScale'
+      };
+      return map[control];
+    }
+
+    const DIVIDE_BY_100 = new Set(['allScale','jarWidth','jarHeight','giftWidth','giftHeight','giftSize','giftBounce','giftFriction','mouthOpacity','mouthScale']);
+
+    function normalizeValue(control, rawValue) {
+      return DIVIDE_BY_100.has(control) ? rawValue / 100 : rawValue;
+    }
+
+    function setSliderValue(control, value) {
+      const id = sliderId(control);
+      const el = id ? document.getElementById(id) : null;
+      if (!el) return;
+      el.value = DIVIDE_BY_100.has(control) ? Math.round(Number(value) * 100) : (Number(value) || 0);
+      sliderState[control] = Number(el.value);
+    }
+
+    function onEffectSlider(control, slider) {
+      const rawValue = parseInt(slider.value, 10);
+      sliderState[control] = rawValue;
+      sendAbsoluteValue(control, normalizeValue(control, rawValue));
+    }
+
+    document.getElementById('jarImageFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const imageUrl = reader.result;
+        const res = await fetch('/jar-control/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl })
+        });
+        if (res.ok) {
+          document.getElementById('jarImageStatus').textContent = '✓ Đã thêm';
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function sendAbsoluteValue(control, value) {
+      await fetch('/jar-control/effect-set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ control, value })
+      });
+    }
+
+    async function resetEffectControl() {
+      await fetch('/jar-control/effect-reset', { method: 'POST' });
+      // Server sẽ emit jarStateInit với config đã lưu → handler bên dưới tự cập nhật tất cả slider
+      // Chỉ cần reset riêng 4 slider vòng miệng (không lưu vào config)
+      const mouthDefaults = { slMouthOpacity: 0, slMouthX: 0, slMouthY: 0, slMouthScale: 100 };
+      for (const [id, val] of Object.entries(mouthDefaults)) {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+      }
+      sliderState.mouthOpacity = 0;
+      sliderState.mouthX = 0; sliderState.mouthY = 0; sliderState.mouthScale = 100;
+    }
+
+    async function saveConfig() {
+      const notice = document.getElementById('saveNotice');
+      const res = await fetch('/jar-control/save-config', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        notice.textContent = '✓ Đã lưu cấu hình thành công';
+        notice.style.color = '#10b981';
+        setTimeout(() => { notice.textContent = ''; }, 3000);
+      } else {
+        notice.textContent = '✗ Lỗi: ' + (data.message || 'Không lưu được');
+        notice.style.color = '#ef4444';
+        setTimeout(() => { notice.textContent = ''; }, 3000);
+      }
+    }
+
+    async function testRain() {
+      await fetch('/jar-control/rain', { method: 'POST' });
+    }
+
+    async function testReset() {
+      await fetch('/jar-control/reset', { method: 'POST' });
+    }
+
+    function buildStickerControls() {
+      const container = document.getElementById('stickerControls');
+      if (!container) return;
+
+      for (let i = 0; i < 5; i++) {
+        const section = document.createElement('div');
+        section.innerHTML = `
+          <div style="font-weight:bold;margin-bottom:8px;color:#fbbf24">Sticker ${i + 1}</div>
+          <div class="row">
+            <span>Upload ảnh</span>
+            <input type="file" id="stickerFile${i}" accept="image/*" style="font-size:11px;max-width:200px">
+            <span id="stickerStatus${i}" style="font-size:11px;color:#10b981"></span>
+          </div>
+          <div class="row">
+            <span>Chiều rộng</span>
+            <input id="slStickerW${i}" type="range" min="10" max="300" value="100" step="1" oninput="onStickerSlider(${i}, 'width', this)">
+          </div>
+          <div class="row">
+            <span>Chiều cao</span>
+            <input id="slStickerH${i}" type="range" min="10" max="300" value="100" step="1" oninput="onStickerSlider(${i}, 'height', this)">
+          </div>
+          <div class="row">
+            <span>Trái / Phải</span>
+            <input id="slStickerX${i}" type="range" min="-600" max="600" value="0" step="1" oninput="onStickerSlider(${i}, 'x', this)">
+          </div>
+          <div class="row">
+            <span>Lên / Xuống</span>
+            <input id="slStickerY${i}" type="range" min="-900" max="900" value="0" step="1" oninput="onStickerSlider(${i}, 'y', this)">
+          </div>
+          <button class="btn btn-red" onclick="resetSticker(${i})" style="width:100%;margin-top:6px">Reset Sticker ${i + 1}</button>
+        `;
+        container.appendChild(section);
+        document.getElementById(`stickerFile${i}`).addEventListener('change', (e) => uploadStickerImage(i, e));
+        updateStickerStatus(i, false);
+      }
+    }
+
+    function updateStickerStatus(index, hasImage) {
+      const el = document.getElementById(`stickerStatus${index}`);
+      if (!el) return;
+      el.textContent = hasImage ? '✓ Đã thêm ảnh' : 'Chưa thêm ảnh';
+      el.style.color = hasImage ? '#10b981' : '#9ca3af';
+    }
+
+    async function uploadStickerImage(index, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const imageUrl = reader.result;
+        const res = await fetch('/jar-control/sticker-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ index, imageUrl })
+        });
+        if (res.ok) updateStickerStatus(index, true);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function onStickerSlider(index, field, slider) {
+      const rawValue = parseInt(slider.value, 10);
+      const value = (field === 'width' || field === 'height') ? rawValue / 100 : rawValue;
+      await fetch('/jar-control/sticker-set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index, field, value })
+      });
+    }
+
+    async function resetSticker(index) {
+      const res = await fetch('/jar-control/sticker-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index })
+      });
+      if (!res.ok) return;
+      document.getElementById(`slStickerW${index}`).value = 100;
+      document.getElementById(`slStickerH${index}`).value = 100;
+      document.getElementById(`slStickerX${index}`).value = 0;
+      document.getElementById(`slStickerY${index}`).value = 0;
+      document.getElementById(`stickerFile${index}`).value = '';
+      updateStickerStatus(index, false);
+    }
+
+    socket.on('jarStateInit', state => {
+      if (!state) return;
+      if (state.tiktokUniqueId) document.getElementById('tiktokId').value = state.tiktokUniqueId;
+
+      setSliderValue('allX', state.allX || 0);
+      setSliderValue('allY', state.allY || 0);
+      if (state.allScale !== undefined) setSliderValue('allScale', state.allScale);
+      if (state.jarWidth  !== undefined) setSliderValue('jarWidth',  state.jarWidth);
+      if (state.jarHeight !== undefined) setSliderValue('jarHeight', state.jarHeight);
+      if (state.jarBaseX  !== undefined) setSliderValue('jarX',  state.jarBaseX);
+      if (state.jarBaseY  !== undefined) setSliderValue('jarY',  state.jarBaseY);
+      if (state.giftWidth  !== undefined) setSliderValue('giftWidth',  state.giftWidth);
+      if (state.giftHeight !== undefined) setSliderValue('giftHeight', state.giftHeight);
+      if (state.giftBaseX     !== undefined) setSliderValue('giftX',        state.giftBaseX);
+      if (state.giftBaseY     !== undefined) setSliderValue('giftY',        state.giftBaseY);
+      if (state.giftSize      !== undefined) setSliderValue('giftSize',     state.giftSize);
+      if (state.giftBounce    !== undefined) setSliderValue('giftBounce',   state.giftBounce);
+      if (state.giftFriction  !== undefined) setSliderValue('giftFriction', state.giftFriction);
+      if (state.mouthOpacity  !== undefined) setSliderValue('mouthOpacity', state.mouthOpacity);
+
+      if (state.jarImageUrl) {
+        document.getElementById('jarImageStatus').textContent = '✓ Đã thêm';
+      }
+
+      if (Array.isArray(state.stickers)) {
+        state.stickers.forEach((s, i) => {
+          const w = document.getElementById(`slStickerW${i}`);
+          const h = document.getElementById(`slStickerH${i}`);
+          const x = document.getElementById(`slStickerX${i}`);
+          const y = document.getElementById(`slStickerY${i}`);
+          if (w && s.width  !== undefined) w.value = Math.round(Number(s.width) * 100);
+          if (h && s.height !== undefined) h.value = Math.round(Number(s.height) * 100);
+          if (x && s.baseX  !== undefined) x.value = Number(s.baseX);
+          if (y && s.baseY  !== undefined) y.value = Number(s.baseY);
+
+          updateStickerStatus(i, s.imageUrl ? true : false);
+        });
+      }
+
+      // Comment state
+      if (state.commentVisible !== undefined) applyCommentVisible(state.commentVisible);
+      if (state.commentSize    !== undefined) applyCommentSize(state.commentSize);
+      // TTS state
+      applyTtsState(state);
+      // Translate state
+      applyTranslateState(state);
+      // Speech state
+      applySpeechState(state);
+    });
+
+    // ── TTS (Chị Google) controls ─────────────────────────────────────────
+    let ttsEnabled    = false;
+    let ttsSkipWords    = [];
+    let ttsReplacements = [];
+
+    function escHtml(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderSkipWords() {
+      const el = document.getElementById('skipWordList');
+      if (!el) return;
+      el.innerHTML = ttsSkipWords.map((w, i) =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;background:#1e293b;border-radius:20px;padding:3px 10px;font-size:12px;color:#e2e8f0">` +
+        escHtml(w) +
+        `<span onclick="removeSkipWord(${i})" style="cursor:pointer;color:#f87171;font-size:14px;line-height:1;margin-left:2px">×</span></span>`
+      ).join('');
+    }
+
+    function renderReplacements() {
+      const el = document.getElementById('replacementList');
+      if (!el) return;
+      el.innerHTML = ttsReplacements.map((r, i) =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;background:#1e293b;border-radius:20px;padding:3px 10px;font-size:12px;color:#e2e8f0">` +
+        `<span style="color:#fbbf24">${escHtml(r.from)}</span>` +
+        `<span style="color:#9ca3af">→</span>` +
+        `<span style="color:#34d399">${escHtml(r.to)}</span>` +
+        `<span onclick="removeReplacement(${i})" style="cursor:pointer;color:#f87171;font-size:14px;line-height:1;margin-left:2px">×</span></span>`
+      ).join('');
+    }
+
+    async function addSkipWord() {
+      const inp = document.getElementById('inpSkipWord');
+      const w = (inp.value || '').trim();
+      if (!w || ttsSkipWords.includes(w)) { inp.value = ''; return; }
+      ttsSkipWords.push(w);
+      inp.value = '';
+      renderSkipWords();
+      await postTtsSet({ skipWords: ttsSkipWords });
+    }
+
+    async function removeSkipWord(i) {
+      ttsSkipWords.splice(i, 1);
+      renderSkipWords();
+      await postTtsSet({ skipWords: ttsSkipWords });
+    }
+
+    async function addReplacement() {
+      const from = (document.getElementById('inpReplFrom').value || '').trim();
+      const to   = (document.getElementById('inpReplTo').value   || '').trim();
+      if (!from) return;
+      ttsReplacements.push({ from, to });
+      document.getElementById('inpReplFrom').value = '';
+      document.getElementById('inpReplTo').value   = '';
+      renderReplacements();
+      await postTtsSet({ replacements: ttsReplacements });
+    }
+
+    async function removeReplacement(i) {
+      ttsReplacements.splice(i, 1);
+      renderReplacements();
+      await postTtsSet({ replacements: ttsReplacements });
+    }
+
+    function applyTtsState(state) {
+      if (state.ttsEnabled !== undefined) {
+        ttsEnabled = state.ttsEnabled;
+        const btn = document.getElementById('ttsToggleBtn');
+        if (btn) {
+          btn.textContent = ttsEnabled ? 'Tắt đọc' : 'Bật đọc';
+          btn.className   = 'btn ' + (ttsEnabled ? 'btn-red' : 'btn-green');
+        }
+      }
+      if (state.ttsVolume !== undefined) {
+        const el = document.getElementById('slTtsVolume');
+        const vl = document.getElementById('ttsVolumeVal');
+        if (el) el.value = state.ttsVolume;
+        if (vl) vl.textContent = state.ttsVolume + '%';
+      }
+      if (state.ttsRate !== undefined) {
+        const el = document.getElementById('slTtsRate');
+        const vl = document.getElementById('ttsRateVal');
+        if (el) el.value = state.ttsRate;
+        if (vl) vl.textContent = (state.ttsRate / 100).toFixed(1) + '×';
+      }
+      if (state.ttsLang !== undefined) {
+        const el = document.getElementById('selTtsLang');
+        if (el) el.value = state.ttsLang;
+      }
+      if (Array.isArray(state.ttsSkipWords)) {
+        ttsSkipWords = state.ttsSkipWords;
+        renderSkipWords();
+      }
+      if (Array.isArray(state.ttsReplacements)) {
+        ttsReplacements = state.ttsReplacements;
+        renderReplacements();
+      }
+    }
+
+    async function postTtsSet(body) {
+      await fetch('/tts-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }
+
+    // Audio queue — phát trực tiếp từ trang này, không cần OBS
+    const ttsQueue = [];
+    let ttsPlaying = false;
+
+    function playNext() {
+      if (ttsQueue.length === 0) { ttsPlaying = false; return; }
+      ttsPlaying = true;
+      const item  = ttsQueue.shift();
+      const audio = new Audio(
+        `/tts-audio?text=${encodeURIComponent(item.text)}&lang=${encodeURIComponent(item.lang)}`
+      );
+      audio.volume       = Math.min(1, Math.max(0, item.volume / 100));
+      audio.playbackRate = Math.min(4, Math.max(0.25, item.rate / 100));
+      let advanced = false;
+      const advance = () => {
+        if (advanced) return;
+        advanced = true;
+        setTimeout(playNext, 150);
+      };
+      audio.onended = advance;
+      audio.onerror = advance;
+      audio.play().catch(advance);
+    }
+
+    socket.on('ttsSpeak', item => {
+      if (!item || !ttsEnabled) return;
+      const volume = Number(document.getElementById('slTtsVolume').value);
+      const rate   = Number(document.getElementById('slTtsRate').value);
+      const lang   = document.getElementById('selTtsLang').value;
+      ttsQueue.push({ text: item.text, lang, volume, rate });
+      if (!ttsPlaying) playNext();
+    });
+
+    function testTts() {
+      const volume = Number(document.getElementById('slTtsVolume').value);
+      const rate   = Number(document.getElementById('slTtsRate').value);
+      const lang   = document.getElementById('selTtsLang').value;
+      ttsQueue.push({ text: 'Tôi đã sẵn sàng đọc comment rồi Duy nhé', lang, volume, rate });
+      if (!ttsPlaying) playNext();
+    }
+
+    async function toggleTts() {
+      ttsEnabled = !ttsEnabled;
+      applyTtsState({ ttsEnabled });
+      await postTtsSet({ enabled: ttsEnabled });
+    }
+
+    async function onTtsSlider() {
+      const volume = Number(document.getElementById('slTtsVolume').value);
+      const rate   = Number(document.getElementById('slTtsRate').value);
+      const lang   = document.getElementById('selTtsLang').value;
+      document.getElementById('ttsVolumeVal').textContent = volume + '%';
+      document.getElementById('ttsRateVal').textContent   = (rate / 100).toFixed(1) + '×';
+      await postTtsSet({ volume, rate, lang });
+    }
+
+    socket.on('ttsConfig', cfg => { if (cfg) applyTtsState(cfg); });
+
+    // ── Comment controls ──────────────────────────────────────────────────
+    let commentVisible = true;
+
+    function applyCommentVisible(v) {
+      commentVisible = v;
+      const btn = document.getElementById('commentToggleBtn');
+      if (!btn) return;
+      btn.textContent  = v ? 'Ẩn Comment' : 'Hiện Comment';
+      btn.className    = 'btn ' + (v ? 'btn-red' : 'btn-green');
+    }
+
+    function applyCommentSize(s) {
+      const el  = document.getElementById('slCommentSize');
+      const val = document.getElementById('commentSizeVal');
+      if (el)  el.value       = s;
+      if (val) val.textContent = s + 'px';
+    }
+
+    async function toggleComment() {
+      commentVisible = !commentVisible;
+      applyCommentVisible(commentVisible);
+      await fetch('/comment-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visible: commentVisible })
+      });
+    }
+
+    async function onCommentSize(slider) {
+      const s = Number(slider.value);
+      applyCommentSize(s);
+      await fetch('/comment-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ size: s })
+      });
+    }
+
+    async function clearComments() {
+      await fetch('/comment-control/clear', { method: 'POST' });
+    }
+
+    // ── Translate overlay controls ────────────────────────────────────────
+    let translateEnabled = false;
+
+    function applyTranslateState(state) {
+      if (state.translateEnabled !== undefined) {
+        translateEnabled = state.translateEnabled;
+        const btn = document.getElementById('translateToggleBtn');
+        if (btn) {
+          btn.textContent = translateEnabled ? 'Tắt' : 'Bật';
+          btn.className   = 'btn ' + (translateEnabled ? 'btn-red' : 'btn-green');
+        }
+      }
+      if (state.translateTargetLang !== undefined) {
+        const el = document.getElementById('selTranslateLang');
+        if (el) el.value = state.translateTargetLang;
+      }
+    }
+
+    async function toggleTranslate() {
+      translateEnabled = !translateEnabled;
+      applyTranslateState({ translateEnabled });
+      await fetch('/translate-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: translateEnabled })
+      });
+    }
+
+    async function onTranslateLang() {
+      const targetLang = document.getElementById('selTranslateLang').value;
+      await fetch('/translate-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetLang })
+      });
+    }
+
+    async function clearTranslate() {
+      await fetch('/translate-control/clear', { method: 'POST' });
+    }
+
+    socket.on('translateConfig', cfg => { if (cfg) applyTranslateState(cfg); });
+
+    // ── Speech translate controls ─────────────────────────────────────────
+    let speechEnabled = false;
+
+    function applySpeechState(state) {
+      if (state.speechEnabled !== undefined) {
+        speechEnabled = state.speechEnabled;
+        const btn = document.getElementById('speechToggleBtn');
+        if (btn) {
+          btn.textContent = speechEnabled ? 'Tắt' : 'Bật';
+          btn.className   = 'btn ' + (speechEnabled ? 'btn-red' : 'btn-green');
+        }
+      }
+      if (state.speechSourceLang !== undefined) {
+        const el = document.getElementById('selSpeechSource');
+        if (el) el.value = state.speechSourceLang;
+      }
+      if (state.speechTargetLang !== undefined) {
+        const el = document.getElementById('selSpeechTarget');
+        if (el) el.value = state.speechTargetLang;
+      }
+      if (state.speechApiKey !== undefined) {
+        const el = document.getElementById('inpSpeechApiKey');
+        if (el && state.speechApiKey) el.value = state.speechApiKey;
+      }
+      if (state.speechProvider !== undefined) {
+        const el = document.getElementById('selSpeechProvider');
+        if (el) el.value = state.speechProvider;
+      }
+    }
+
+    async function toggleSpeech() {
+      speechEnabled = !speechEnabled;
+      applySpeechState({ speechEnabled });
+      await fetch('/speech-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: speechEnabled })
+      });
+    }
+
+    async function onSpeechSettings() {
+      const sourceLang = document.getElementById('selSpeechSource').value;
+      const targetLang = document.getElementById('selSpeechTarget').value;
+      const apiKey     = document.getElementById('inpSpeechApiKey').value.trim();
+      const provider   = document.getElementById('selSpeechProvider').value;
+      await fetch('/speech-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceLang, targetLang, apiKey, provider })
+      });
+    }
+
+    async function clearSpeech() {
+      await fetch('/speech-control/clear', { method: 'POST' });
+    }
+
+    socket.on('speechConfig', cfg => { if (cfg) applySpeechState(cfg); });
+
+    socket.on('speechStatus', ({ status, text }) => {
+      const el = document.getElementById('speechStatusText');
+      if (!el) return;
+      const colors = { capturing: '#22c55e', ok: '#22c55e', error: '#ef4444' };
+      el.style.color = colors[status] || '#94a3b8';
+      el.textContent = text || status;
+    });
+
+    buildStickerControls();
+    socket.emit('jarStateRequest');
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yt-dlp --version)",
+      "PowerShell(yt-dlp --version 2>&1)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"E:\\\\CODE\\\\WEB_LIVE_STU\\\\ffmpeg\")",
+      "PowerShell(& \"E:\\\\CODE\\\\WEB_LIVE_STU\\\\ffmpeg\\\\yt-dlp.exe\" --no-warnings -g -f best \"https://www.tiktok.com/@anhduong171202/live\" 2>&1)",
+      "PowerShell(& \"E:\\\\CODE\\\\WEB_LIVE_STU\\\\ffmpeg\\\\yt-dlp.exe\" --version)",
+      "PowerShell(& \"E:\\\\CODE\\\\WEB_LIVE_STU\\\\ffmpeg\\\\yt-dlp.exe\" --cookies-from-browser chrome -g \"https://www.tiktok.com/@anhduong171202/live\" 2>&1)",
+      "PowerShell(& \"E:\\\\CODE\\\\WEB_LIVE_STU\\\\ffmpeg\\\\yt-dlp.exe\" -v -g \"https://www.tiktok.com/@anhduong171202/live\" 2>&1)"
+    ]
+  }
+}

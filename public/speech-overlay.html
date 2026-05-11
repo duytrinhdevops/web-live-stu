@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Speech Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    #subtitle {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 960px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    #subtitle.hidden { display: none; }
+
+    .sub-box {
+      display: inline-block;
+      background: rgba(0, 0, 0, 0.72);
+      border-radius: 12px;
+      padding: 10px 24px 12px;
+      backdrop-filter: blur(6px);
+      max-width: 100%;
+      animation: fadeUp 0.3s ease;
+    }
+
+    .original {
+      font-size: 13px;
+      color: #94a3b8;
+      font-style: italic;
+      margin-bottom: 4px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+      word-break: break-word;
+      line-height: 1.5;
+    }
+
+    .translated {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f8fafc;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.95);
+      word-break: break-word;
+      line-height: 1.4;
+      letter-spacing: 0.2px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .sub-box.fading {
+      transition: opacity 0.6s ease;
+      opacity: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="subtitle">
+    <div class="sub-box" id="box" style="display:none"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket   = io({ transports: ['websocket', 'polling'], reconnection: true });
+    const subtitle = document.getElementById('subtitle');
+    const box      = document.getElementById('box');
+    let hideTimer  = null;
+    let fadeTimer  = null;
+
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function showResult(original, translated) {
+      // Clear previous timers
+      clearTimeout(hideTimer);
+      clearTimeout(fadeTimer);
+      box.classList.remove('fading');
+
+      const showOriginal = original && translated && original.toLowerCase() !== translated.toLowerCase();
+
+      box.innerHTML =
+        (showOriginal ? `<div class="original">${esc(original)}</div>` : '') +
+        `<div class="translated">${esc(translated || original)}</div>`;
+      box.style.display = 'inline-block';
+
+      // Auto-hide after display time based on word count
+      const words = (translated || original).split(/\s+/).length;
+      const displayMs = Math.max(4000, words * 400);
+
+      fadeTimer = setTimeout(() => {
+        box.classList.add('fading');
+        hideTimer = setTimeout(() => {
+          box.style.display = 'none';
+          box.classList.remove('fading');
+        }, 600);
+      }, displayMs);
+    }
+
+    function applyConfig(cfg) {
+      if (cfg.speechEnabled !== undefined)
+        subtitle.classList.toggle('hidden', !cfg.speechEnabled);
+    }
+
+    socket.on('connect', () => socket.emit('jarStateRequest'));
+    socket.on('jarStateInit', state => { if (state) applyConfig(state); });
+    socket.on('speechConfig', cfg => { if (cfg) applyConfig(cfg); });
+
+    socket.on('speechResult', data => {
+      if (!data || subtitle.classList.contains('hidden')) return;
+      showResult(data.original || '', data.translated || '');
+    });
+
+    socket.on('speechClear', () => {
+      clearTimeout(hideTimer);
+      clearTimeout(fadeTimer);
+      box.style.display = 'none';
+      box.classList.remove('fading');
+    });
+  </script>
+</body>
+</html>

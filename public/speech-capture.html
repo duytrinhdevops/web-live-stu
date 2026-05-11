@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Speech Capture</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      padding: 28px;
+      min-height: 100vh;
+    }
+    h2 { font-size: 18px; color: #a78bfa; margin-bottom: 6px; }
+    .sub { font-size: 12px; color: #64748b; margin-bottom: 24px; }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .row label { min-width: 100px; color: #94a3b8; }
+    select, input[type=text], input[type=password] {
+      flex: 1;
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #fff;
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+    .btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-purple { background: #7c3aed; color: #fff; }
+    .btn-red    { background: #dc2626; color: #fff; }
+    .btn-gray   { background: #334155; color: #cbd5e1; }
+
+    #statusDot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #334155;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    #statusDot.active  { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 1.5s infinite; }
+    #statusDot.working { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+    #statusDot.error   { background: #ef4444; }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
+
+    #statusText { font-size: 13px; color: #94a3b8; }
+
+    #log {
+      max-height: 320px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .log-item {
+      background: #0f1117;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      border-left: 3px solid #a78bfa;
+    }
+    .log-item .orig  { color: #94a3b8; margin-bottom: 3px; }
+    .log-item .trans { color: #f1f5f9; font-size: 13px; font-weight: 500; }
+    .log-item .ts    { color: #475569; font-size: 11px; margin-top: 3px; }
+    .log-item.err    { border-left-color: #ef4444; }
+    .log-item.err .orig { color: #fca5a5; }
+
+    .note {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.6;
+      padding: 10px 0 0;
+    }
+    .note b { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h2>Speech Capture</h2>
+  <p class="sub">Mở trang này trong Chrome (không phải OBS). Chọn tab TikTok để capture âm thanh.</p>
+
+  <div class="card">
+    <div class="row">
+      <label>Tiếng nói</label>
+      <select id="selSource">
+        <option value="vi">Tiếng Việt (vi)</option>
+        <option value="en">English (en)</option>
+        <option value="zh">中文 (zh)</option>
+        <option value="ja">日本語 (ja)</option>
+        <option value="ko">한국어 (ko)</option>
+        <option value="th">ภาษาไทย (th)</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Dịch sang</label>
+      <select id="selTarget">
+        <option value="en">English (en)</option>
+        <option value="vi">Tiếng Việt (vi)</option>
+        <option value="zh-CN">中文 (zh-CN)</option>
+        <option value="ja">日本語 (ja)</option>
+        <option value="ko">한국어 (ko)</option>
+        <option value="fr">Français (fr)</option>
+        <option value="de">Deutsch (de)</option>
+        <option value="es">Español (es)</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>OpenAI Key</label>
+      <input id="inpApiKey" type="password" placeholder="sk-..." />
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <button id="btnStart" class="btn btn-purple" onclick="startCapture()">Bắt đầu capture</button>
+      <button id="btnStop"  class="btn btn-red"    onclick="stopCapture()" style="display:none">Dừng lại</button>
+      <span><span id="statusDot"></span><span id="statusText">Chưa capture</span></span>
+    </div>
+    <p class="note">
+      <b>Cách dùng:</b> Nhấn "Bắt đầu capture" → Chrome hỏi chia sẻ màn hình → chọn tab TikTok hoặc cửa sổ đang phát live → tick "Chia sẻ âm thanh tab" → OK.
+      Mỗi ~6 giây âm thanh sẽ được gửi lên Whisper để nhận dạng.
+    </p>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font-size:13px;font-weight:600;color:#a78bfa">Kết quả gần đây</span>
+      <button class="btn btn-gray" onclick="clearLog()" style="padding:4px 12px;font-size:12px">Xoá</button>
+    </div>
+    <div id="log"><div style="color:#475569;font-size:12px">Chưa có kết quả...</div></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io({ transports: ['websocket', 'polling'], reconnection: true });
+
+    let mediaRecorder = null;
+    let audioStream   = null;
+
+    // Restore settings from server
+    socket.on('connect', () => socket.emit('jarStateRequest'));
+    socket.on('jarStateInit', state => {
+      if (!state) return;
+      if (state.speechSourceLang) document.getElementById('selSource').value = state.speechSourceLang;
+      if (state.speechTargetLang) document.getElementById('selTarget').value = state.speechTargetLang;
+      if (state.speechApiKey)     document.getElementById('inpApiKey').value = state.speechApiKey;
+    });
+    socket.on('speechConfig', cfg => {
+      if (!cfg) return;
+      if (cfg.speechSourceLang) document.getElementById('selSource').value = cfg.speechSourceLang;
+      if (cfg.speechTargetLang) document.getElementById('selTarget').value = cfg.speechTargetLang;
+      if (cfg.speechApiKey)     document.getElementById('inpApiKey').value = cfg.speechApiKey;
+    });
+
+    socket.on('speechResult', data => {
+      setStatus('active', 'Đang capture...');
+      addLog(data.original, data.translated, false);
+    });
+
+    socket.on('speechError', data => {
+      setStatus('error', 'Lỗi: ' + (data.message || '').slice(0, 60));
+      addLog('Lỗi: ' + (data.message || ''), '', true);
+    });
+
+    function setStatus(type, text) {
+      const dot  = document.getElementById('statusDot');
+      const span = document.getElementById('statusText');
+      dot.className = type;
+      span.textContent = text;
+    }
+
+    async function saveSettings() {
+      const apiKey     = document.getElementById('inpApiKey').value.trim();
+      const sourceLang = document.getElementById('selSource').value;
+      const targetLang = document.getElementById('selTarget').value;
+      await fetch('/speech-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, sourceLang, targetLang, enabled: true })
+      });
+    }
+
+    async function startCapture() {
+      const apiKey = document.getElementById('inpApiKey').value.trim();
+      if (!apiKey) { alert('Nhập OpenAI API key trước.'); return; }
+
+      try {
+        // Request display capture with audio
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true
+        });
+
+        const audioTracks = displayStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          displayStream.getTracks().forEach(t => t.stop());
+          alert('Không lấy được âm thanh. Hãy chắc chắn tick "Chia sẻ âm thanh tab" khi chọn tab.');
+          return;
+        }
+
+        // Stop video track — we only need audio
+        displayStream.getVideoTracks().forEach(t => t.stop());
+        audioStream = new MediaStream(audioTracks);
+
+        // Choose best supported MIME type
+        const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        const mime  = mimes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+        mediaRecorder = new MediaRecorder(audioStream, {
+          mimeType: mime,
+          audioBitsPerSecond: 32000
+        });
+
+        mediaRecorder.ondataavailable = async (e) => {
+          if (!e.data || e.data.size < 2000) return; // skip silence/empty chunks
+          setStatus('working', 'Đang nhận dạng...');
+          try {
+            const base64 = await blobToBase64(e.data);
+            socket.emit('speechChunk', { audio: base64, mimeType: e.data.type || mime });
+          } catch(err) {
+            console.error(err);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          audioStream.getTracks().forEach(t => t.stop());
+          audioStream = null;
+          setStatus('', 'Đã dừng');
+          document.getElementById('btnStart').style.display = '';
+          document.getElementById('btnStop').style.display  = 'none';
+        };
+
+        await saveSettings();
+        mediaRecorder.start(6000); // 6-second chunks
+
+        setStatus('active', 'Đang capture...');
+        document.getElementById('btnStart').style.display = 'none';
+        document.getElementById('btnStop').style.display  = '';
+      } catch(err) {
+        if (err.name === 'NotAllowedError') {
+          setStatus('error', 'Bị từ chối quyền capture');
+        } else {
+          setStatus('error', err.message);
+        }
+      }
+    }
+
+    function stopCapture() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      fetch('/speech-control/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: false })
+      });
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function addLog(original, translated, isError) {
+      const log = document.getElementById('log');
+      // Remove placeholder
+      const placeholder = log.querySelector('div[style]');
+      if (placeholder) placeholder.remove();
+
+      const item = document.createElement('div');
+      item.className = 'log-item' + (isError ? ' err' : '');
+      const now = new Date().toLocaleTimeString('vi-VN');
+      item.innerHTML =
+        `<div class="orig">${esc(original)}</div>` +
+        (translated ? `<div class="trans">${esc(translated)}</div>` : '') +
+        `<div class="ts">${now}</div>`;
+      log.insertBefore(item, log.firstChild);
+
+      // Keep max 20 items
+      while (log.children.length > 20) log.removeChild(log.lastChild);
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '<div style="color:#475569;font-size:12px">Chưa có kết quả...</div>';
+    }
+
+    function esc(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>
