@@ -1,4 +1,5 @@
 node_modules/
 ffmpeg/*.exe
 config.json
+configs/
 .claude/
