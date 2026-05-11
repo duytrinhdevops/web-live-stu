@@ -1,38 +1,37 @@
 const path = require("path");
 
-// Giá trị mặc định — được merge vào defaultState() của server
 const DEFAULT_STATE = {
   commentVisible: true,
   commentSize: 18
 };
 
-// Đăng ký routes và socket events liên quan đến comment
-function register(app, io, getState, saveConfig) {
+function register(app, io, getRoom, saveRoomConfig) {
   app.get("/comment.html", (req, res) => {
     res.sendFile(path.join(__dirname, "../public/comment.html"));
   });
 
-  app.post("/comment-control/set", (req, res) => {
-    const state = getState();
+  app.post("/room/:roomId/comment-control/set", (req, res) => {
+    const room = getRoom(req.params.roomId);
+    if (!room) return res.status(404).json({ success: false, message: "Room not found" });
     const { visible, size } = req.body || {};
-    if (visible !== undefined) state.commentVisible = Boolean(visible);
-    if (size !== undefined && Number.isFinite(Number(size))) state.commentSize = Number(size);
-    io.emit("commentConfig", {
-      commentVisible: state.commentVisible,
-      commentSize: state.commentSize
+    if (visible !== undefined) room.state.commentVisible = Boolean(visible);
+    if (size !== undefined && Number.isFinite(Number(size))) room.state.commentSize = Number(size);
+    io.to(req.params.roomId).emit("commentConfig", {
+      commentVisible: room.state.commentVisible,
+      commentSize:    room.state.commentSize
     });
-    saveConfig();
+    saveRoomConfig(req.params.roomId);
     res.json({ success: true });
   });
 
-  app.post("/comment-control/clear", (req, res) => {
-    io.emit("commentClear");
+  app.post("/room/:roomId/comment-control/clear", (req, res) => {
+    if (!getRoom(req.params.roomId)) return res.status(404).json({ success: false });
+    io.to(req.params.roomId).emit("commentClear");
     res.json({ success: true });
   });
 }
 
-// Gắn listener chat vào một TikTok connection
-function attachChatListener(conn, io) {
+function attachChatListener(conn, roomId, io) {
   conn.on("chat", data => {
     const message = (data.comment || "").trim();
     if (!message) return;
@@ -42,7 +41,7 @@ function attachChatListener(conn, io) {
       data.userDetails?.nickname ||
       data.userDetails?.uniqueId ||
       "Unknown";
-    io.emit("commentDrop", { username: user, message });
+    io.to(roomId).emit("commentDrop", { username: user, message });
   });
 }
 

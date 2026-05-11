@@ -67,8 +67,10 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io({ transports: ['websocket', 'polling'], reconnection: true });
+    const roomId    = new URLSearchParams(location.search).get('room') || '';
+    const socket    = io({ transports: ['websocket', 'polling'], reconnection: true });
     const container = document.getElementById('comments');
+    socket.on('connect', () => { if (roomId) socket.emit('joinRoom', roomId); });
 
     const MAX_COMMENTS = 10;
     const LIFETIME_MS  = 9000;
@@ -121,7 +123,6 @@
       }
     }
 
-    socket.on('connect', () => socket.emit('jarStateRequest'));
 
     socket.on('commentConfig', cfg => { if (cfg) applyConfig(cfg); });
 

@@ -11,74 +11,63 @@ function fetchTranslation(text, targetLang) {
     const url =
       "https://translate.googleapis.com/translate_a/single" +
       `?client=gtx&sl=auto&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(text)}`;
-
     const req = https.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36"
-      }
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36" }
     }, (res) => {
       let raw = "";
       res.on("data", c => raw += c);
       res.on("end", () => {
-        try {
-          const json = JSON.parse(raw);
-          const translated = json[0].map(seg => seg[0] || "").join("").trim();
-          resolve(translated);
-        } catch (e) {
-          reject(e);
-        }
+        try { resolve(JSON.parse(raw)[0].map(s => s[0] || "").join("").trim()); }
+        catch (e) { reject(e); }
       });
     });
-
     req.setTimeout(6000, () => { req.destroy(); reject(new Error("timeout")); });
     req.on("error", reject);
   });
 }
 
-function register(app, io, getState, saveConfig) {
+function register(app, io, getRoom, saveRoomConfig) {
   app.get("/translate.html", (req, res) => {
     res.sendFile(path.join(__dirname, "../public/translate.html"));
   });
 
-  app.post("/translate-control/set", (req, res) => {
-    const state = getState();
+  app.post("/room/:roomId/translate-control/set", (req, res) => {
+    const room = getRoom(req.params.roomId);
+    if (!room) return res.status(404).json({ success: false, message: "Room not found" });
     const { enabled, targetLang } = req.body || {};
-    if (enabled    !== undefined) state.translateEnabled    = Boolean(enabled);
-    if (targetLang !== undefined) state.translateTargetLang = String(targetLang);
-    io.emit("translateConfig", {
-      translateEnabled:    state.translateEnabled,
-      translateTargetLang: state.translateTargetLang
+    if (enabled    !== undefined) room.state.translateEnabled    = Boolean(enabled);
+    if (targetLang !== undefined) room.state.translateTargetLang = String(targetLang);
+    io.to(req.params.roomId).emit("translateConfig", {
+      translateEnabled:    room.state.translateEnabled,
+      translateTargetLang: room.state.translateTargetLang
     });
-    saveConfig();
+    saveRoomConfig(req.params.roomId);
     res.json({ success: true });
   });
 
-  app.post("/translate-control/clear", (req, res) => {
-    io.emit("translateClear");
+  app.post("/room/:roomId/translate-control/clear", (req, res) => {
+    if (!getRoom(req.params.roomId)) return res.status(404).json({ success: false });
+    io.to(req.params.roomId).emit("translateClear");
     res.json({ success: true });
   });
 }
 
-function attachChatListener(conn, io, getState) {
+function attachChatListener(conn, roomId, io, getState) {
   conn.on("chat", data => {
     const message = (data.comment || "").trim();
     if (!message) return;
     const state = getState();
     if (!state.translateEnabled) return;
-
     const user =
       data.nickname ||
       data.uniqueId ||
       data.userDetails?.nickname ||
       data.userDetails?.uniqueId ||
       "Unknown";
-
-    const targetLang = state.translateTargetLang || "en";
-
-    fetchTranslation(message, targetLang)
+    fetchTranslation(message, state.translateTargetLang || "en")
       .then(translated => {
         if (!translated || translated.toLowerCase() === message.toLowerCase()) return;
-        io.emit("translateDrop", { username: user, original: message, translated });
+        io.to(roomId).emit("translateDrop", { username: user, original: message, translated });
       })
       .catch(() => {});
   });

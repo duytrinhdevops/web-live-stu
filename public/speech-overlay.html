@@ -74,9 +74,11 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    const roomId   = new URLSearchParams(location.search).get('room') || '';
     const socket   = io({ transports: ['websocket', 'polling'], reconnection: true });
     const subtitle = document.getElementById('subtitle');
     const box      = document.getElementById('box');
+    socket.on('connect', () => { if (roomId) socket.emit('joinRoom', roomId); });
     let hideTimer  = null;
     let fadeTimer  = null;
 
@@ -115,7 +117,6 @@
         subtitle.classList.toggle('hidden', !cfg.speechEnabled);
     }
 
-    socket.on('connect', () => socket.emit('jarStateRequest'));
     socket.on('jarStateInit', state => { if (state) applyConfig(state); });
     socket.on('speechConfig', cfg => { if (cfg) applyConfig(cfg); });
 

@@ -92,8 +92,10 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    const roomId    = new URLSearchParams(location.search).get('room') || '';
     const socket    = io({ transports: ['websocket', 'polling'], reconnection: true });
     const container = document.getElementById('items');
+    socket.on('connect', () => { if (roomId) socket.emit('joinRoom', roomId); });
 
     const MAX_ITEMS   = 6;
     const LIFETIME_MS = 10000;
@@ -141,7 +143,6 @@
         targetLang = cfg.translateTargetLang;
     }
 
-    socket.on('connect', () => socket.emit('jarStateRequest'));
     socket.on('jarStateInit', state => { if (state) applyConfig(state); });
     socket.on('translateConfig', cfg => { if (cfg) applyConfig(cfg); });
 

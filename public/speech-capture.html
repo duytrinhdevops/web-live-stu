@@ -152,13 +152,13 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    const roomId = new URLSearchParams(location.search).get('room') || '';
     const socket = io({ transports: ['websocket', 'polling'], reconnection: true });
 
     let mediaRecorder = null;
     let audioStream   = null;
 
-    // Restore settings from server
-    socket.on('connect', () => socket.emit('jarStateRequest'));
+    socket.on('connect', () => { if (roomId) socket.emit('joinRoom', roomId); });
     socket.on('jarStateInit', state => {
       if (!state) return;
       if (state.speechSourceLang) document.getElementById('selSource').value = state.speechSourceLang;
@@ -193,7 +193,7 @@
       const apiKey     = document.getElementById('inpApiKey').value.trim();
       const sourceLang = document.getElementById('selSource').value;
       const targetLang = document.getElementById('selTarget').value;
-      await fetch('/speech-control/set', {
+      await fetch(`/room/${roomId}/speech-control/set`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey, sourceLang, targetLang, enabled: true })
@@ -267,7 +267,7 @@
 
     function stopCapture() {
       if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-      fetch('/speech-control/set', {
+      fetch(`/room/${roomId}/speech-control/set`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: false })

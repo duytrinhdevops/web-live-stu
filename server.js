@@ -1,403 +1,404 @@
-const fs = require("fs");
-const path = require("path");
+const fs     = require("fs");
+const path   = require("path");
+const crypto = require("crypto");
 const express = require("express");
-const http = require("http");
+const http    = require("http");
 const { Server } = require("socket.io");
 const { WebcastPushConnection } = require("tiktok-live-connector");
-const viewComment       = require("./modules/view_comment");
-const googleRead        = require("./modules/google_read");
-const translateOverlay  = require("./modules/translate_overlay");
-const speechTranslate   = require("./modules/speech_translate");
+const viewComment      = require("./modules/view_comment");
+const googleRead       = require("./modules/google_read");
+const translateOverlay = require("./modules/translate_overlay");
+const speechTranslate  = require("./modules/speech_translate");
 
-const app = express();
+const app    = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io     = new Server(server);
 
-const CONFIG_PATH = path.join(__dirname, "config.json");
+const CONFIG_DIR = path.join(__dirname, "configs");
+if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR);
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
+// ── Room state ────────────────────────────────────────────────────────────
+
 function defaultState() {
   return {
     tiktokUniqueId: "",
-    allX: 0,
-    allY: 0,
-    allScale: 1,
-    jarWidth: 1,
-    jarHeight: 1,
-    jarBaseX: 0,
-    jarBaseY: 0,
-    jarImageUrl: null,
-    giftWidth: 1,
-    giftHeight: 1,
-    giftBaseX: 0,
-    giftBaseY: 0,
-    giftSize: 1,
-    giftBounce: 0.02,
-    giftFriction: 0.6,
-    mouthOpacity: 0,
-    mouthX: 0,
-    mouthY: 0,
-    mouthScale: 1,
+    allX: 0, allY: 0, allScale: 1,
+    jarWidth: 1, jarHeight: 1, jarBaseX: 0, jarBaseY: 0, jarImageUrl: null,
+    giftWidth: 1, giftHeight: 1, giftBaseX: 0, giftBaseY: 0,
+    giftSize: 1, giftBounce: 0.02, giftFriction: 0.6,
+    mouthOpacity: 0, mouthX: 0, mouthY: 0, mouthScale: 1,
     ...viewComment.DEFAULT_STATE,
     ...googleRead.DEFAULT_STATE,
     ...translateOverlay.DEFAULT_STATE,
     ...speechTranslate.DEFAULT_STATE,
-    stickers: [
-      { imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0 },
-      { imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0 },
-      { imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0 },
-      { imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0 },
-      { imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0 }
-    ]
+    stickers: Array(5).fill(null).map(() => ({ imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0 }))
   };
 }
 
-let jarState = defaultState();
+const rooms = new Map(); // roomId → { id, state, connection, isConnected }
 
-function loadConfig() {
+function getRoom(roomId) {
+  return rooms.get(roomId) || null;
+}
+
+function createRoom(roomId) {
+  if (rooms.has(roomId)) return rooms.get(roomId);
+  const room = { id: roomId, state: defaultState(), connection: null, isConnected: false };
+  loadRoomConfig(room);
+  applyAllOffset(room);
+  rooms.set(roomId, room);
+  return room;
+}
+
+function getRoomConfigPath(roomId) {
+  return path.join(CONFIG_DIR, `config_${roomId}.json`);
+}
+
+function loadRoomConfig(room) {
   try {
-    if (!fs.existsSync(CONFIG_PATH)) return;
-    const raw = fs.readFileSync(CONFIG_PATH, "utf8");
-    const parsed = JSON.parse(raw);
+    const cfgPath = getRoomConfigPath(room.id);
+    if (!fs.existsSync(cfgPath)) return;
+    const parsed   = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
     const fallback = defaultState();
-    jarState = {
+    room.state = {
       ...fallback,
       ...parsed,
       stickers: Array.isArray(parsed.stickers) && parsed.stickers.length === 5
-        ? parsed.stickers.map(s => ({ imageUrl: null, width: 1, height: 1, x: 0, y: 0, ...s }))
+        ? parsed.stickers.map(s => ({ imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0, ...s }))
         : fallback.stickers
     };
   } catch (err) {
-    console.log("Load config failed:", err.message);
+    console.log(`[room:${room.id}] Load config failed:`, err.message);
   }
 }
 
-function saveConfig() {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(jarState, null, 2), "utf8");
+function saveRoomConfig(roomId) {
+  const room = getRoom(roomId);
+  if (!room) return;
+  fs.writeFileSync(getRoomConfigPath(roomId), JSON.stringify(room.state, null, 2), "utf8");
 }
 
-loadConfig();
-applyAllOffset();
+// Load rooms from existing config files on startup
+for (const file of fs.readdirSync(CONFIG_DIR)) {
+  const m = file.match(/^config_([a-z0-9]+)\.json$/);
+  if (m) createRoom(m[1]);
+}
 
-function getStickerIndex(value) {
+function applyAllOffset(room) {
+  const allX = Number(room.state.allX || 0);
+  const allY = Number(room.state.allY || 0);
+  room.state.jarX  = room.state.jarBaseX  + allX;
+  room.state.jarY  = room.state.jarBaseY  + allY;
+  room.state.giftX = room.state.giftBaseX + allX;
+  room.state.giftY = room.state.giftBaseY + allY;
+  for (const s of room.state.stickers) {
+    s.x = (s.baseX || 0) + allX;
+    s.y = (s.baseY || 0) + allY;
+  }
+}
+
+function getStickerIndex(value, room) {
   const idx = Number(value);
-  if (!Number.isInteger(idx) || idx < 0 || idx >= jarState.stickers.length) return -1;
+  if (!Number.isInteger(idx) || idx < 0 || idx >= room.state.stickers.length) return -1;
   return idx;
 }
 
-function emitStatus(status, extra = {}) {
-  io.emit("tiktokStatus", { status, ...extra });
+// ── TikTok connection ─────────────────────────────────────────────────────
+
+async function disconnectRoom(roomId) {
+  const room = getRoom(roomId);
+  if (!room || !room.connection) return;
+  speechTranslate.stopStreamCapture(roomId);
+  try { await room.connection.disconnect(); } catch {}
+  room.connection  = null;
+  room.isConnected = false;
 }
 
-function applyAllOffset() {
-  const allX = Number(jarState.allX || 0);
-  const allY = Number(jarState.allY || 0);
-
-  jarState.jarX = jarState.jarBaseX + allX;
-  jarState.jarY = jarState.jarBaseY + allY;
-  jarState.giftX = jarState.giftBaseX + allX;
-  jarState.giftY = jarState.giftBaseY + allY;
-
-  for (const sticker of jarState.stickers) {
-    sticker.x = (sticker.baseX || 0) + allX;
-    sticker.y = (sticker.baseY || 0) + allY;
-  }
-}
-
-let currentConnection = null;
-let isConnected = false;
-
-async function disconnectTikTokInternal() {
-  if (!currentConnection) return;
-  speechTranslate.stopStreamCapture();
-  try {
-    if (typeof currentConnection.disconnect === "function") {
-      await currentConnection.disconnect();
-    }
-  } catch (err) {
-    // ignore
-  }
-  currentConnection = null;
-  isConnected = false;
-}
-
-async function connectTikTokById(uniqueId) {
+async function connectRoom(roomId, uniqueId) {
+  const room    = getRoom(roomId);
+  if (!room) throw new Error("Room not found");
   const cleanId = String(uniqueId || "").trim();
-  if (!cleanId) {
-    throw new Error("ID TikTok không hợp lệ");
-  }
+  if (!cleanId) throw new Error("ID TikTok không hợp lệ");
 
-  emitStatus("connecting", { uniqueId: cleanId });
-  await disconnectTikTokInternal();
+  io.to(roomId).emit("tiktokStatus", { status: "connecting", uniqueId: cleanId });
+  await disconnectRoom(roomId);
 
   const conn = new WebcastPushConnection(cleanId, {
-    processInitialData: false,
-    enableWebsocketUpgrade: false,
+    processInitialData:       false,
+    enableWebsocketUpgrade:   false,
     requestPollingIntervalMs: 1000
   });
 
   conn.on("gift", data => {
-    const gift = data.giftName || "quà";
+    const gift  = data.giftName || "quà";
     const count = data.repeatCount || 1;
-    const user =
-      data.nickname ||
-      data.uniqueId ||
-      data.userDetails?.nickname ||
-      data.userDetails?.uniqueId ||
-      "Unknown";
-
-    const giftImageUrl =
-      data.giftPictureUrl ||
-      (data.gift && data.gift.image && data.gift.image.url_list && data.gift.image.url_list[0]) ||
-      "";
-
+    const user  = data.nickname || data.uniqueId || data.userDetails?.nickname || data.userDetails?.uniqueId || "Unknown";
+    const giftImageUrl = data.giftPictureUrl || data.gift?.image?.url_list?.[0] || "";
     for (let i = 0; i < count; i++) {
-      io.emit("giftDrop", {
-        username: user,
-        giftName: gift,
-        imgPath: giftImageUrl
-      });
+      io.to(roomId).emit("giftDrop", { username: user, giftName: gift, imgPath: giftImageUrl });
     }
   });
 
-  viewComment.attachChatListener(conn, io);
-  googleRead.attachChatListener(conn, io, () => jarState);
-  translateOverlay.attachChatListener(conn, io, () => jarState);
+  viewComment.attachChatListener(conn, roomId, io);
+  googleRead.attachChatListener(conn, roomId, io, () => room.state);
+  translateOverlay.attachChatListener(conn, roomId, io, () => room.state);
 
   conn.on("streamEnd", () => {
-    isConnected = false;
-    speechTranslate.stopStreamCapture();
-    emitStatus("live_ended", { uniqueId: cleanId });
+    room.isConnected = false;
+    speechTranslate.stopStreamCapture(roomId);
+    io.to(roomId).emit("tiktokStatus", { status: "live_ended", uniqueId: cleanId });
   });
 
   conn.on("disconnected", () => {
-    isConnected = false;
-    speechTranslate.stopStreamCapture();
-    emitStatus("disconnected", { uniqueId: cleanId });
+    room.isConnected = false;
+    speechTranslate.stopStreamCapture(roomId);
+    io.to(roomId).emit("tiktokStatus", { status: "disconnected", uniqueId: cleanId });
   });
 
-  try {
-    await conn.connect();
-    currentConnection = conn;
-    isConnected = true;
+  await conn.connect();
+  room.connection  = conn;
+  room.isConnected = true;
+  room.state.tiktokUniqueId = cleanId;
+  saveRoomConfig(roomId);
+  io.to(roomId).emit("tiktokStatus", { status: "connected", uniqueId: cleanId });
 
-    jarState.tiktokUniqueId = cleanId;
-    saveConfig();
-    emitStatus("connected", { uniqueId: cleanId });
-
-    // Auto-start stream audio capture if speech is enabled
-    if (jarState.speechEnabled && jarState.speechApiKey) {
-      const streamUrl = speechTranslate.extractFromRoomInfo(conn.roomInfo);
-      if (streamUrl) {
-        speechTranslate.startStreamCapture(streamUrl, io, () => jarState);
-      } else {
-        console.log("[speech] Stream URL not in roomInfo, falling back to yt-dlp");
-        speechTranslate.startStreamCaptureByUsername(cleanId, io, () => jarState);
-      }
+  if (room.state.speechEnabled && room.state.speechApiKey) {
+    const streamUrl = speechTranslate.extractFromRoomInfo(conn.roomInfo);
+    if (streamUrl) {
+      speechTranslate.startStreamCapture(roomId, streamUrl, io, () => room.state);
+    } else {
+      speechTranslate.startStreamCaptureByUsername(roomId, cleanId, io, () => room.state);
     }
-
-    return cleanId;
-  } catch (err) {
-    await disconnectTikTokInternal();
-    emitStatus("error", { uniqueId: cleanId, message: err.message });
-    throw err;
   }
+
+  return cleanId;
 }
 
-app.post("/tiktok/connect", async (req, res) => {
-  const { uniqueId } = req.body || {};
+// ── Admin routes ──────────────────────────────────────────────────────────
+
+app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public/admin.html")));
+
+app.get("/admin/rooms", (req, res) => {
+  const list = [...rooms.entries()].map(([id, room]) => ({
+    id,
+    tiktokUniqueId: room.state.tiktokUniqueId || "",
+    isConnected:    room.isConnected
+  }));
+  res.json(list);
+});
+
+app.post("/admin/rooms/create", (req, res) => {
+  const roomId = crypto.randomBytes(3).toString("hex"); // 6-char hex
+  createRoom(roomId);
+  saveRoomConfig(roomId);
+  res.json({ roomId });
+});
+
+app.delete("/admin/rooms/:roomId", (req, res) => {
+  const { roomId } = req.params;
+  disconnectRoom(roomId);
+  rooms.delete(roomId);
+  const cfgPath = getRoomConfigPath(roomId);
+  if (fs.existsSync(cfgPath)) fs.unlinkSync(cfgPath);
+  res.json({ success: true });
+});
+
+// ── Room-scoped routes helper ─────────────────────────────────────────────
+
+function requireRoom(req, res) {
+  const room = getRoom(req.params.roomId);
+  if (!room) { res.status(404).json({ success: false, message: "Room not found" }); return null; }
+  return room;
+}
+
+// ── TikTok routes ─────────────────────────────────────────────────────────
+
+app.post("/room/:roomId/tiktok/connect", async (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
   try {
-    const id = await connectTikTokById(uniqueId);
+    const id = await connectRoom(req.params.roomId, (req.body || {}).uniqueId);
     res.json({ success: true, uniqueId: id });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message || "Connect failed" });
+    res.status(400).json({ success: false, message: err.message });
   }
 });
 
-app.post("/tiktok/disconnect", async (req, res) => {
-  await disconnectTikTokInternal();
-  emitStatus("disconnected", { uniqueId: jarState.tiktokUniqueId || "" });
+app.post("/room/:roomId/tiktok/disconnect", async (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  await disconnectRoom(req.params.roomId);
+  io.to(req.params.roomId).emit("tiktokStatus", { status: "disconnected", uniqueId: room.state.tiktokUniqueId || "" });
   res.json({ success: true });
 });
 
-app.post("/jar-control/rain", (req, res) => {
+// ── Jar control routes ────────────────────────────────────────────────────
+
+app.post("/room/:roomId/jar-control/rain", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
   for (let i = 0; i < 20; i++) {
-    setTimeout(() => {
-      io.emit("giftDrop", {
-        username: "Test User",
-        giftName: "Test Gift",
-        imgPath: ""
-      });
-    }, i * 80);
+    setTimeout(() => io.to(req.params.roomId).emit("giftDrop", { username: "Test", giftName: "Test Gift", imgPath: "" }), i * 80);
   }
   res.json({ success: true });
 });
 
-app.post("/jar-control/reset", (req, res) => {
-  io.emit("jarReset");
+app.post("/room/:roomId/jar-control/reset", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  io.to(req.params.roomId).emit("jarReset");
   res.json({ success: true });
 });
 
-app.post("/jar-control/effect-set", (req, res) => {
+app.post("/room/:roomId/jar-control/effect-set", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
   const { control, value } = req.body || {};
   const v = Number(value);
-  if (!control || !Number.isFinite(v)) {
-    return res.status(400).json({ success: false, message: "invalid payload" });
-  }
+  if (!control || !Number.isFinite(v)) return res.status(400).json({ success: false, message: "invalid payload" });
 
-  if (control === "allX")     jarState.allX     = v;
-  if (control === "allY")     jarState.allY     = v;
-  if (control === "allScale") jarState.allScale = v;
-  if (control === "jarWidth") jarState.jarWidth = v;
-  if (control === "jarHeight") jarState.jarHeight = v;
-  if (control === "jarX") jarState.jarBaseX = v;
-  if (control === "jarY") jarState.jarBaseY = v;
-  if (control === "giftWidth")    jarState.giftWidth    = v;
-  if (control === "giftHeight")   jarState.giftHeight   = v;
-  if (control === "giftX")        jarState.giftBaseX    = v;
-  if (control === "giftY")        jarState.giftBaseY    = v;
-  if (control === "giftSize")      jarState.giftSize     = v;
-  if (control === "giftBounce")    jarState.giftBounce   = v;
-  if (control === "giftFriction")  jarState.giftFriction = v;
-  if (control === "mouthOpacity")  jarState.mouthOpacity = v;
-  if (control === "mouthX")        jarState.mouthX       = v;
-  if (control === "mouthY")        jarState.mouthY       = v;
-  if (control === "mouthScale")    jarState.mouthScale   = v;
+  const s = room.state;
+  if (control === "allX")        s.allX        = v;
+  if (control === "allY")        s.allY        = v;
+  if (control === "allScale")    s.allScale    = v;
+  if (control === "jarWidth")    s.jarWidth    = v;
+  if (control === "jarHeight")   s.jarHeight   = v;
+  if (control === "jarX")        s.jarBaseX    = v;
+  if (control === "jarY")        s.jarBaseY    = v;
+  if (control === "giftWidth")   s.giftWidth   = v;
+  if (control === "giftHeight")  s.giftHeight  = v;
+  if (control === "giftX")       s.giftBaseX   = v;
+  if (control === "giftY")       s.giftBaseY   = v;
+  if (control === "giftSize")    s.giftSize    = v;
+  if (control === "giftBounce")  s.giftBounce  = v;
+  if (control === "giftFriction") s.giftFriction = v;
+  if (control === "mouthOpacity") s.mouthOpacity = v;
+  if (control === "mouthX")      s.mouthX      = v;
+  if (control === "mouthY")      s.mouthY      = v;
+  if (control === "mouthScale")  s.mouthScale  = v;
 
-  if (control === "allX" || control === "allY") {
-    applyAllOffset();
-  } else if (control === "jarX" || control === "jarY" || control === "giftX" || control === "giftY") {
-    applyAllOffset();
-  }
+  if (["allX","allY","jarX","jarY","giftX","giftY"].includes(control)) applyAllOffset(room);
 
-  const emitValue = control === "jarX"  ? jarState.jarX
-                  : control === "jarY"  ? jarState.jarY
-                  : control === "giftX" ? jarState.giftX
-                  : control === "giftY" ? jarState.giftY
-                  : v;
-  io.emit("jarEffectSet", { control, value: emitValue });
+  const roomId   = req.params.roomId;
+  const emitVal  = control === "jarX"  ? s.jarX
+                 : control === "jarY"  ? s.jarY
+                 : control === "giftX" ? s.giftX
+                 : control === "giftY" ? s.giftY : v;
+  io.to(roomId).emit("jarEffectSet", { control, value: emitVal });
 
   if (control === "allX" || control === "allY") {
-    io.emit("jarEffectSet", { control: "jarX", value: jarState.jarX });
-    io.emit("jarEffectSet", { control: "jarY", value: jarState.jarY });
-    io.emit("jarEffectSet", { control: "giftX", value: jarState.giftX });
-    io.emit("jarEffectSet", { control: "giftY", value: jarState.giftY });
-    jarState.stickers.forEach((s, index) => {
-      io.emit("stickerTransformUpdated", { index, field: "x", value: s.x });
-      io.emit("stickerTransformUpdated", { index, field: "y", value: s.y });
+    io.to(roomId).emit("jarEffectSet", { control: "jarX",  value: s.jarX  });
+    io.to(roomId).emit("jarEffectSet", { control: "jarY",  value: s.jarY  });
+    io.to(roomId).emit("jarEffectSet", { control: "giftX", value: s.giftX });
+    io.to(roomId).emit("jarEffectSet", { control: "giftY", value: s.giftY });
+    s.stickers.forEach((st, index) => {
+      io.to(roomId).emit("stickerTransformUpdated", { index, field: "x", value: st.x });
+      io.to(roomId).emit("stickerTransformUpdated", { index, field: "y", value: st.y });
     });
   }
 
-  saveConfig();
+  saveRoomConfig(roomId);
   res.json({ success: true });
 });
 
-app.post("/jar-control/effect-reset", (req, res) => {
-  // Khôi phục về config đã lưu lần cuối (nếu chưa có file thì về default)
-  if (fs.existsSync(CONFIG_PATH)) {
-    loadConfig();
-  } else {
-    jarState = defaultState();
-  }
-  applyAllOffset();
-  io.emit("jarStateInit", { ...jarState, isConnected });
+app.post("/room/:roomId/jar-control/effect-reset", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  loadRoomConfig(room);
+  applyAllOffset(room);
+  io.to(req.params.roomId).emit("jarStateInit", { ...room.state, isConnected: room.isConnected });
   res.json({ success: true });
 });
 
-app.post("/jar-control/upload-image", (req, res) => {
+app.post("/room/:roomId/jar-control/upload-image", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
   const { imageUrl } = req.body || {};
-  if (!imageUrl || typeof imageUrl !== "string") {
-    return res.status(400).json({ success: false, message: "imageUrl required" });
-  }
-
-  jarState.jarImageUrl = imageUrl;
-  io.emit("jarImageUpdated", { imageUrl });
-  saveConfig();
+  if (!imageUrl || typeof imageUrl !== "string") return res.status(400).json({ success: false, message: "imageUrl required" });
+  room.state.jarImageUrl = imageUrl;
+  io.to(req.params.roomId).emit("jarImageUpdated", { imageUrl });
+  saveRoomConfig(req.params.roomId);
   res.json({ success: true, imageUrl });
 });
 
-app.post("/jar-control/sticker-image", (req, res) => {
+app.post("/room/:roomId/jar-control/sticker-image", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
   const { index, imageUrl } = req.body || {};
-  const idx = getStickerIndex(index);
+  const idx = getStickerIndex(index, room);
   if (idx < 0) return res.status(400).json({ success: false, message: "invalid sticker index" });
   if (typeof imageUrl !== "string") return res.status(400).json({ success: false, message: "imageUrl required" });
-
-  jarState.stickers[idx].imageUrl = imageUrl || null;
-  io.emit("stickerImageUpdated", { index: idx, imageUrl: jarState.stickers[idx].imageUrl });
-  saveConfig();
-  res.json({ success: true, sticker: jarState.stickers[idx] });
+  room.state.stickers[idx].imageUrl = imageUrl || null;
+  io.to(req.params.roomId).emit("stickerImageUpdated", { index: idx, imageUrl: room.state.stickers[idx].imageUrl });
+  saveRoomConfig(req.params.roomId);
+  res.json({ success: true });
 });
 
-app.post("/jar-control/sticker-set", (req, res) => {
+app.post("/room/:roomId/jar-control/sticker-set", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
   const { index, field, value } = req.body || {};
-  const idx = getStickerIndex(index);
-  const v = Number(value);
-  const allowed = new Set(["x", "y", "width", "height"]);
-
-  if (idx < 0 || !allowed.has(field) || !Number.isFinite(v)) {
+  const idx = getStickerIndex(index, room);
+  const v   = Number(value);
+  if (idx < 0 || !["x","y","width","height"].includes(field) || !Number.isFinite(v))
     return res.status(400).json({ success: false, message: "invalid payload" });
-  }
 
-  if (field === "x") jarState.stickers[idx].baseX = v;
-  if (field === "y") jarState.stickers[idx].baseY = v;
-  if (field === "width") jarState.stickers[idx].width = v;
-  if (field === "height") jarState.stickers[idx].height = v;
+  if (field === "x")      room.state.stickers[idx].baseX  = v;
+  if (field === "y")      room.state.stickers[idx].baseY  = v;
+  if (field === "width")  room.state.stickers[idx].width  = v;
+  if (field === "height") room.state.stickers[idx].height = v;
+  applyAllOffset(room);
 
-  applyAllOffset();
-
-  if (field === "x") io.emit("stickerTransformUpdated", { index: idx, field: "x", value: jarState.stickers[idx].x });
-  if (field === "y") io.emit("stickerTransformUpdated", { index: idx, field: "y", value: jarState.stickers[idx].y });
-  if (field === "width") io.emit("stickerTransformUpdated", { index: idx, field: "width", value: jarState.stickers[idx].width });
-  if (field === "height") io.emit("stickerTransformUpdated", { index: idx, field: "height", value: jarState.stickers[idx].height });
-
-  saveConfig();
-  res.json({ success: true, sticker: jarState.stickers[idx] });
+  const st = room.state.stickers[idx];
+  const emitVal = field === "x" ? st.x : field === "y" ? st.y : v;
+  io.to(req.params.roomId).emit("stickerTransformUpdated", { index: idx, field, value: emitVal });
+  saveRoomConfig(req.params.roomId);
+  res.json({ success: true });
 });
 
-app.post("/jar-control/sticker-reset", (req, res) => {
-  const { index } = req.body || {};
-  const idx = getStickerIndex(index);
+app.post("/room/:roomId/jar-control/sticker-reset", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  const idx = getStickerIndex((req.body || {}).index, room);
   if (idx < 0) return res.status(400).json({ success: false, message: "invalid sticker index" });
-
-  jarState.stickers[idx] = { imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0, x: jarState.allX, y: jarState.allY };
-  io.emit("stickerReset", { index: idx, sticker: jarState.stickers[idx] });
-  saveConfig();
-  res.json({ success: true, sticker: jarState.stickers[idx] });
+  room.state.stickers[idx] = { imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0, x: room.state.allX, y: room.state.allY };
+  io.to(req.params.roomId).emit("stickerReset", { index: idx, sticker: room.state.stickers[idx] });
+  saveRoomConfig(req.params.roomId);
+  res.json({ success: true });
 });
 
-app.post("/jar-control/save-config", (req, res) => {
-  try {
-    saveConfig();
-    res.json({ success: true, path: "config.json" });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+app.post("/room/:roomId/jar-control/save-config", (req, res) => {
+  if (!requireRoom(req, res)) return;
+  try { saveRoomConfig(req.params.roomId); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-app.get("/jar-control/state", (req, res) => {
-  res.json({ ...jarState, isConnected });
+app.get("/room/:roomId/jar-control/state", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  res.json({ ...room.state, isConnected: room.isConnected });
 });
 
-viewComment.register(app, io, () => jarState, saveConfig);
-googleRead.register(app, io, () => jarState, saveConfig);
-translateOverlay.register(app, io, () => jarState, saveConfig);
-speechTranslate.register(app, io, () => jarState, saveConfig);
+// ── Module routes ─────────────────────────────────────────────────────────
+
+viewComment.register(app, io, getRoom, saveRoomConfig);
+googleRead.register(app, io, getRoom, saveRoomConfig);
+translateOverlay.register(app, io, getRoom, saveRoomConfig);
+speechTranslate.register(app, io, getRoom, saveRoomConfig);
+
+// ── Socket.IO ─────────────────────────────────────────────────────────────
 
 io.on("connection", (socket) => {
-  socket.emit("jarStateInit", { ...jarState, isConnected });
-
-  socket.emit("tiktokStatus", {
-    status: isConnected ? "connected" : "disconnected",
-    uniqueId: jarState.tiktokUniqueId || ""
+  socket.on("joinRoom", (roomId) => {
+    socket.join(roomId);
+    const room = getRoom(roomId);
+    if (!room) return;
+    socket.emit("jarStateInit", { ...room.state, isConnected: room.isConnected });
+    socket.emit("tiktokStatus", {
+      status:   room.isConnected ? "connected" : "disconnected",
+      uniqueId: room.state.tiktokUniqueId || ""
+    });
   });
 
   socket.on("jarStateRequest", () => {
-    socket.emit("jarStateInit", { ...jarState, isConnected });
+    for (const roomId of socket.rooms) {
+      if (roomId === socket.id) continue;
+      const room = getRoom(roomId);
+      if (room) socket.emit("jarStateInit", { ...room.state, isConnected: room.isConnected });
+    }
   });
 });
 
-server.listen(3000, () => {
-  console.log("Server chạy tại http://localhost:3000");
-});
+server.listen(3000, () => console.log("Server chạy tại http://localhost:3000"));

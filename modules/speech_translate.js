@@ -4,21 +4,38 @@ const { spawn } = require("child_process");
 
 const IS_WIN     = process.platform === "win32";
 const BIN_DIR    = path.join(__dirname, "../ffmpeg");
-const FFMPEG_EXE = IS_WIN ? path.join(BIN_DIR, "ffmpeg.exe")  : "ffmpeg";
-const YTDLP_EXE  = IS_WIN ? path.join(BIN_DIR, "yt-dlp.exe")  : path.join(BIN_DIR, "yt-dlp");
+const FFMPEG_EXE = IS_WIN ? path.join(BIN_DIR, "ffmpeg.exe") : "ffmpeg";
+const YTDLP_EXE  = IS_WIN ? path.join(BIN_DIR, "yt-dlp.exe") : path.join(BIN_DIR, "yt-dlp");
 
 const DEFAULT_STATE = {
   speechEnabled:    false,
   speechSourceLang: "vi",
   speechTargetLang: "en",
-  speechProvider:   "groq",   // "groq" (free) | "openai"
+  speechProvider:   "groq",
   speechApiKey:     ""
 };
 
 const PROVIDERS = {
-  groq:   { hostname: "api.groq.com",       path: "/openai/v1/audio/transcriptions", model: "whisper-large-v3-turbo" },
-  openai: { hostname: "api.openai.com",      path: "/v1/audio/transcriptions",        model: "whisper-1" }
+  groq:   { hostname: "api.groq.com",  path: "/openai/v1/audio/transcriptions", model: "whisper-large-v3-turbo" },
+  openai: { hostname: "api.openai.com", path: "/v1/audio/transcriptions",        model: "whisper-1" }
 };
+
+// ── Per-room process state ─────────────────────────────────────────────────
+
+const roomProcs = new Map();
+
+function getRoomProc(roomId) {
+  if (!roomProcs.has(roomId)) {
+    roomProcs.set(roomId, {
+      ffmpegProc: null,
+      pcmBuffer:  Buffer.alloc(0),
+      processing: false,
+      _io:        null,
+      _getState:  null
+    });
+  }
+  return roomProcs.get(roomId);
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -53,7 +70,6 @@ function buildWav(pcmData, sampleRate = 16000, channels = 1, bitsPerSample = 16)
   return Buffer.concat([hdr, pcmData]);
 }
 
-
 function fetchTranslation(text, targetLang) {
   return new Promise((resolve, reject) => {
     const url =
@@ -80,7 +96,6 @@ function callWhisper(wavBase64, sourceLang, apiKey, provider) {
     const audioBuf = Buffer.from(wavBase64, "base64");
     const boundary = "wb" + Date.now().toString(36) + Math.random().toString(36).slice(2);
     const CRLF     = "\r\n";
-
     const head = Buffer.from(
       `--${boundary}${CRLF}` +
       `Content-Disposition: form-data; name="file"; filename="audio.wav"${CRLF}` +
@@ -94,14 +109,13 @@ function callWhisper(wavBase64, sourceLang, apiKey, provider) {
       `--${boundary}--${CRLF}`
     );
     const body = Buffer.concat([head, audioBuf, tail]);
-
     const req = https.request({
       hostname: p.hostname,
       path:     p.path,
       method:   "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type":  `multipart/form-data; boundary=${boundary}`,
+        "Authorization":  `Bearer ${apiKey}`,
+        "Content-Type":   `multipart/form-data; boundary=${boundary}`,
         "Content-Length": body.length
       }
     }, res => {
@@ -124,41 +138,39 @@ function callWhisper(wavBase64, sourceLang, apiKey, provider) {
   });
 }
 
-// ── FFmpeg stream capture ──────────────────────────────────────────────────
+// ── Audio processing ───────────────────────────────────────────────────────
 
-let ffmpegProc  = null;
-let _io         = null;
-let _getState   = null;
+const SAMPLE_RATE = 16000;
+const CHUNK_SECS  = 6;
+const CHUNK_BYTES = SAMPLE_RATE * 2 * CHUNK_SECS;
 
-const SAMPLE_RATE  = 16000;
-const CHUNK_SECS   = 6;
-const CHUNK_BYTES  = SAMPLE_RATE * 2 * CHUNK_SECS; // 16-bit mono PCM
-
-let pcmBuffer = Buffer.alloc(0);
-let processing = false;
-
-async function processWav(wavBase64) {
-  if (processing) return; // don't stack concurrent Whisper calls
-  processing = true;
+async function processWav(roomId, wavBase64) {
+  const rp = getRoomProc(roomId);
+  if (rp.processing) return;
+  rp.processing = true;
   try {
-    const state = _getState();
+    const state = rp._getState();
     if (!state.speechEnabled || !state.speechApiKey) return;
-
-    const transcript = await callWhisper(wavBase64, state.speechSourceLang || "vi", state.speechApiKey, state.speechProvider || "groq");
+    const transcript = await callWhisper(
+      wavBase64,
+      state.speechSourceLang || "vi",
+      state.speechApiKey,
+      state.speechProvider  || "groq"
+    );
     if (isJunk(transcript)) return;
-
-    const sameLang  = state.speechTargetLang === state.speechSourceLang;
+    const sameLang   = state.speechTargetLang === state.speechSourceLang;
     const translated = sameLang ? "" : await fetchTranslation(transcript, state.speechTargetLang || "en");
-
-    _io.emit("speechResult", { original: transcript, translated });
-    _io.emit("speechStatus", { status: "ok", text: transcript.slice(0, 60) });
+    rp._io.to(roomId).emit("speechResult", { original: transcript, translated });
+    rp._io.to(roomId).emit("speechStatus", { status: "ok", text: transcript.slice(0, 60) });
   } catch(err) {
     console.error("[speech]", err.message);
-    _io.emit("speechStatus", { status: "error", text: err.message.slice(0, 80) });
+    rp._io.to(roomId).emit("speechStatus", { status: "error", text: err.message.slice(0, 80) });
   } finally {
-    processing = false;
+    rp.processing = false;
   }
 }
+
+// ── yt-dlp helpers ─────────────────────────────────────────────────────────
 
 function ytdlpGetUrl(tiktokUrl, extraArgs) {
   return new Promise((resolve, reject) => {
@@ -176,68 +188,63 @@ function ytdlpGetUrl(tiktokUrl, extraArgs) {
   });
 }
 
-async function tryGetStreamUrl(tiktokUrl, io, getState) {
-  // Try without cookies first (fastest, works for public streams)
+async function tryGetStreamUrl(roomId, tiktokUrl, io, getState) {
   try {
-    io.emit("speechStatus", { status: "working", text: "Đang lấy stream URL..." });
+    io.to(roomId).emit("speechStatus", { status: "working", text: "Đang lấy stream URL..." });
     const url = await ytdlpGetUrl(tiktokUrl, []);
-    startStreamCapture(url, io, getState);
+    startStreamCapture(roomId, url, io, getState);
     return;
   } catch(e) {
-    // If not live — no point retrying with cookies
     if (e.message.includes("not currently live") || e.message.includes("does not exist")) {
       const msg = "Idol chưa livestream";
       console.log("[speech]", msg);
-      io.emit("speechStatus", { status: "error", text: msg });
+      io.to(roomId).emit("speechStatus", { status: "error", text: msg });
       return;
     }
     console.log("[speech] no-cookie attempt failed:", e.message.slice(0, 80));
   }
 
-  // Retry with browser cookies (for members-only streams)
   for (const browser of ["chrome", "edge", "firefox"]) {
     try {
-      io.emit("speechStatus", { status: "working", text: `Thử cookie ${browser}...` });
+      io.to(roomId).emit("speechStatus", { status: "working", text: `Thử cookie ${browser}...` });
       const url = await ytdlpGetUrl(tiktokUrl, ["--cookies-from-browser", browser]);
-      startStreamCapture(url, io, getState);
+      startStreamCapture(roomId, url, io, getState);
       return;
     } catch(e) {
       if (e.message.includes("not currently live") || e.message.includes("does not exist")) {
-        io.emit("speechStatus", { status: "error", text: "Idol chưa livestream" });
+        io.to(roomId).emit("speechStatus", { status: "error", text: "Idol chưa livestream" });
         return;
       }
       console.log(`[speech] yt-dlp (${browser}):`, e.message.slice(0, 80));
     }
   }
-
-  io.emit("speechStatus", { status: "error", text: "Không lấy được stream URL" });
+  io.to(roomId).emit("speechStatus", { status: "error", text: "Không lấy được stream URL" });
 }
 
-// Extract stream URL directly from tiktok-live-connector roomInfo
-// Prefer FLV SD (lower bandwidth, sufficient for audio)
+// ── Stream URL from roomInfo ───────────────────────────────────────────────
+
 function extractFromRoomInfo(roomInfo) {
   const su = roomInfo?.data?.stream_url;
   if (!su) return null;
-  return su.flv_pull_url?.SD1 ||
-         su.flv_pull_url?.HD1 ||
-         su.hls_pull_url     ||
-         su.rtmp_pull_url    ||
-         null;
+  return su.flv_pull_url?.SD1 || su.flv_pull_url?.HD1 || su.hls_pull_url || su.rtmp_pull_url || null;
 }
 
 const FFMPEG_HEADERS =
   "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\r\n" +
   "Referer: https://www.tiktok.com/\r\n";
 
-function startStreamCapture(streamUrl, io, getState) {
-  stopStreamCapture();
-  _io       = io;
-  _getState = getState;
-  pcmBuffer = Buffer.alloc(0);
+// ── FFmpeg stream capture ──────────────────────────────────────────────────
 
-  console.log("[speech] Starting FFmpeg stream capture:", streamUrl.slice(0, 80) + "...");
+function startStreamCapture(roomId, streamUrl, io, getState) {
+  stopStreamCapture(roomId);
+  const rp = getRoomProc(roomId);
+  rp._io       = io;
+  rp._getState = getState;
+  rp.pcmBuffer = Buffer.alloc(0);
 
-  ffmpegProc = spawn(FFMPEG_EXE, [
+  console.log(`[speech:${roomId}] Starting FFmpeg:`, streamUrl.slice(0, 80) + "...");
+
+  rp.ffmpegProc = spawn(FFMPEG_EXE, [
     "-loglevel",  "warning",
     "-headers",   FFMPEG_HEADERS,
     "-reconnect", "1",
@@ -253,58 +260,68 @@ function startStreamCapture(streamUrl, io, getState) {
     "pipe:1"
   ], { windowsHide: true });
 
-  ffmpegProc.stdout.on("data", (data) => {
-    const state = _getState();
+  rp.ffmpegProc.stdout.on("data", (data) => {
+    const state = rp._getState();
     if (!state.speechEnabled || !state.speechApiKey) return;
-
-    pcmBuffer = Buffer.concat([pcmBuffer, data]);
-
-    while (pcmBuffer.length >= CHUNK_BYTES) {
-      const chunk = pcmBuffer.slice(0, CHUNK_BYTES);
-      pcmBuffer   = pcmBuffer.slice(CHUNK_BYTES);
-      const wav   = buildWav(chunk);
-      processWav(wav.toString("base64"));
+    rp.pcmBuffer = Buffer.concat([rp.pcmBuffer, data]);
+    while (rp.pcmBuffer.length >= CHUNK_BYTES) {
+      const chunk  = rp.pcmBuffer.slice(0, CHUNK_BYTES);
+      rp.pcmBuffer = rp.pcmBuffer.slice(CHUNK_BYTES);
+      processWav(roomId, buildWav(chunk).toString("base64"));
     }
   });
 
-  ffmpegProc.stderr.on("data", (data) => {
+  rp.ffmpegProc.stderr.on("data", (data) => {
     const msg = data.toString();
     if (msg.includes("error") || msg.includes("Error")) {
-      console.error("[speech/ffmpeg]", msg.trim());
+      console.error(`[speech/ffmpeg:${roomId}]`, msg.trim());
     }
   });
 
-  ffmpegProc.on("error", (err) => {
+  rp.ffmpegProc.on("error", (err) => {
     if (err.code === "ENOENT") {
-      console.error("[speech] Không tìm thấy ffmpeg.exe tại:", FFMPEG_EXE);
-      io.emit("speechStatus", { status: "error", text: "Thiếu ffmpeg.exe trong thư mục ffmpeg/" });
+      console.error("[speech] ffmpeg not found:", FFMPEG_EXE);
+      io.to(roomId).emit("speechStatus", { status: "error", text: "Thiếu ffmpeg" });
     } else {
-      console.error("[speech] FFmpeg error:", err.message);
-      io.emit("speechStatus", { status: "error", text: err.message });
+      io.to(roomId).emit("speechStatus", { status: "error", text: err.message });
     }
-    ffmpegProc = null;
+    rp.ffmpegProc = null;
   });
 
-  ffmpegProc.on("close", (code) => {
-    console.log("[speech] FFmpeg closed with code", code);
-    ffmpegProc = null;
-    pcmBuffer  = Buffer.alloc(0);
+  rp.ffmpegProc.on("close", (code) => {
+    console.log(`[speech:${roomId}] FFmpeg closed with code`, code);
+    rp.ffmpegProc = null;
+    rp.pcmBuffer  = Buffer.alloc(0);
   });
 
-  io.emit("speechStatus", { status: "capturing", text: "Đang capture stream..." });
+  io.to(roomId).emit("speechStatus", { status: "capturing", text: "Đang capture stream..." });
 }
 
-function stopStreamCapture() {
-  if (ffmpegProc) {
-    ffmpegProc.kill("SIGTERM");
-    ffmpegProc = null;
+function stopStreamCapture(roomId) {
+  if (!roomProcs.has(roomId)) return;
+  const rp = roomProcs.get(roomId);
+  if (rp.ffmpegProc) {
+    rp.ffmpegProc.kill("SIGTERM");
+    rp.ffmpegProc = null;
   }
-  pcmBuffer = Buffer.alloc(0);
+  rp.pcmBuffer = Buffer.alloc(0);
+}
+
+function startStreamCaptureByUsername(roomId, uniqueId, io, getState) {
+  stopStreamCapture(roomId);
+  const rp     = getRoomProc(roomId);
+  rp._io       = io;
+  rp._getState = getState;
+  rp.pcmBuffer = Buffer.alloc(0);
+  const tiktokUrl = `https://www.tiktok.com/@${uniqueId}/live`;
+  console.log(`[speech:${roomId}] Getting stream URL via yt-dlp for:`, uniqueId);
+  io.to(roomId).emit("speechStatus", { status: "working", text: "Đang lấy stream URL qua yt-dlp..." });
+  tryGetStreamUrl(roomId, tiktokUrl, io, getState);
 }
 
 // ── Express + Socket registration ─────────────────────────────────────────
 
-function register(app, io, getState, saveConfig) {
+function register(app, io, getRoom, saveRoomConfig) {
   app.get("/speech-capture.html", (req, res) =>
     res.sendFile(path.join(__dirname, "../public/speech-capture.html"))
   );
@@ -312,44 +329,31 @@ function register(app, io, getState, saveConfig) {
     res.sendFile(path.join(__dirname, "../public/speech-overlay.html"))
   );
 
-  app.post("/speech-control/set", (req, res) => {
-    const state = getState();
+  app.post("/room/:roomId/speech-control/set", (req, res) => {
+    const room = getRoom(req.params.roomId);
+    if (!room) return res.status(404).json({ success: false });
     const { enabled, sourceLang, targetLang, apiKey, provider } = req.body || {};
-    if (enabled    !== undefined) state.speechEnabled    = Boolean(enabled);
-    if (sourceLang !== undefined) state.speechSourceLang = String(sourceLang);
-    if (targetLang !== undefined) state.speechTargetLang = String(targetLang);
-    if (apiKey     !== undefined) state.speechApiKey     = String(apiKey);
-    if (provider   !== undefined && PROVIDERS[provider]) state.speechProvider = String(provider);
-    io.emit("speechConfig", {
-      speechEnabled:    state.speechEnabled,
-      speechSourceLang: state.speechSourceLang,
-      speechTargetLang: state.speechTargetLang,
-      speechApiKey:     state.speechApiKey,
-      speechProvider:   state.speechProvider
+    if (enabled    !== undefined) room.state.speechEnabled    = Boolean(enabled);
+    if (sourceLang !== undefined) room.state.speechSourceLang = String(sourceLang);
+    if (targetLang !== undefined) room.state.speechTargetLang = String(targetLang);
+    if (apiKey     !== undefined) room.state.speechApiKey     = String(apiKey);
+    if (provider   !== undefined && PROVIDERS[provider]) room.state.speechProvider = String(provider);
+    io.to(req.params.roomId).emit("speechConfig", {
+      speechEnabled:    room.state.speechEnabled,
+      speechSourceLang: room.state.speechSourceLang,
+      speechTargetLang: room.state.speechTargetLang,
+      speechApiKey:     room.state.speechApiKey,
+      speechProvider:   room.state.speechProvider
     });
-    saveConfig();
+    saveRoomConfig(req.params.roomId);
     res.json({ success: true });
   });
 
-  app.post("/speech-control/clear", (req, res) => {
-    io.emit("speechClear");
+  app.post("/room/:roomId/speech-control/clear", (req, res) => {
+    if (!getRoom(req.params.roomId)) return res.status(404).json({ success: false });
+    io.to(req.params.roomId).emit("speechClear");
     res.json({ success: true });
   });
-}
-
-// ── yt-dlp entry point ────────────────────────────────────────────────────
-
-function startStreamCaptureByUsername(uniqueId, io, getState) {
-  stopStreamCapture();
-  _io       = io;
-  _getState = getState;
-  pcmBuffer = Buffer.alloc(0);
-
-  const tiktokUrl = `https://www.tiktok.com/@${uniqueId}/live`;
-  console.log("[speech] Getting stream URL via yt-dlp for:", uniqueId);
-  io.emit("speechStatus", { status: "working", text: "Đang lấy stream URL qua yt-dlp..." });
-
-  tryGetStreamUrl(tiktokUrl, io, getState);
 }
 
 module.exports = { DEFAULT_STATE, register, extractFromRoomInfo, startStreamCapture, startStreamCaptureByUsername, stopStreamCapture };
