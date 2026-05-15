@@ -257,9 +257,20 @@ function saveRoomConfig(roomId) {
 }
 
 // Load rooms from existing config files on startup
+// Also re-save to persist any new defaultState fields into old config files
 for (const file of fs.readdirSync(CONFIG_DIR)) {
   const m = file.match(/^config_([a-z0-9]+)\.json$/);
-  if (m) createRoom(m[1]);
+  if (m) { createRoom(m[1]); saveRoomConfig(m[1]); }
+}
+
+// Debounced save for goalCurrent (called on every gift)
+const goalSaveTimers = new Map();
+function debouncedSaveGoal(roomId) {
+  if (goalSaveTimers.has(roomId)) clearTimeout(goalSaveTimers.get(roomId));
+  goalSaveTimers.set(roomId, setTimeout(() => {
+    goalSaveTimers.delete(roomId);
+    saveRoomConfig(roomId);
+  }, 30_000));
 }
 
 function applyAllOffset(room) {
@@ -323,6 +334,7 @@ async function connectRoom(roomId, uniqueId) {
     if (r2 && r2.state.goalTarget > 0) {
       r2.state.goalCurrent += total;
       io.to(roomId).emit("goalUpdate", { current: r2.state.goalCurrent, target: r2.state.goalTarget, label: r2.state.goalLabel });
+      debouncedSaveGoal(roomId);
     }
 
     // Alert for big gifts
