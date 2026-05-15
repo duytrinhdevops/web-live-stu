@@ -74,7 +74,7 @@ function attachChatListener(conn, roomId, io, getState) {
     const raw = (data.comment || "").trim();
     if (!raw) return;
     const state = getState();
-    if (!state.ttsEnabled) return;
+    if (!state || !state.ttsEnabled) return;
     const text = processText(raw, state);
     if (!text) return;
     io.to(roomId).emit("ttsSpeak", {

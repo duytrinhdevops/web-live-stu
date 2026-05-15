@@ -57,7 +57,7 @@ function attachChatListener(conn, roomId, io, getState) {
     const message = (data.comment || "").trim();
     if (!message) return;
     const state = getState();
-    if (!state.translateEnabled) return;
+    if (!state || !state.translateEnabled) return;
     const user =
       data.nickname ||
       data.uniqueId ||

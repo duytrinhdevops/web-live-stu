@@ -319,6 +319,7 @@ async function connectRoom(roomId, uniqueId) {
   });
 
   conn.on("gift", data => {
+    if (room.connection !== conn) return;
     const gift     = data.giftName || "quà";
     const count    = data.repeatCount || 1;
     const user     = data.nickname || data.uniqueId || data.userDetails?.nickname || data.userDetails?.uniqueId || "Unknown";
@@ -366,24 +367,32 @@ async function connectRoom(roomId, uniqueId) {
     io.to(roomId).emit("viewerUpdate", { viewers: rt.viewers, likes: rt.likes });
   });
 
+  // Returns state only if this conn is still the active connection
+  const activeState = () => room.connection === conn ? room.state : null;
+
   viewComment.attachChatListener(conn, roomId, io, getRoom);
-  googleRead.attachChatListener(conn, roomId, io, () => room.state);
-  translateOverlay.attachChatListener(conn, roomId, io, () => room.state);
+  googleRead.attachChatListener(conn, roomId, io, activeState);
+  translateOverlay.attachChatListener(conn, roomId, io, activeState);
 
   conn.on("streamEnd", () => {
+    if (room.connection !== conn) return;
     room.isConnected = false;
     speechTranslate.stopStreamCapture(roomId);
     io.to(roomId).emit("tiktokStatus", { status: "live_ended", uniqueId: cleanId });
   });
 
   conn.on("disconnected", () => {
+    if (room.connection !== conn) return;
     room.isConnected = false;
     speechTranslate.stopStreamCapture(roomId);
     io.to(roomId).emit("tiktokStatus", { status: "disconnected", uniqueId: cleanId });
   });
 
-  await conn.connect();
+  // Set room.connection early so any concurrent connectRoom call will disconnect this conn
   room.connection  = conn;
+  room.isConnected = false;
+
+  await conn.connect();
   room.isConnected = true;
   room.state.tiktokUniqueId = cleanId;
   saveRoomConfig(roomId);

@@ -33,6 +33,7 @@ function register(app, io, getRoom, saveRoomConfig) {
 
 function attachChatListener(conn, roomId, io, getRoom) {
   conn.on("chat", data => {
+    if (getRoom && getRoom(roomId)?.connection !== conn) return;
     const message = (data.comment || "").trim();
     if (!message) return;
     if (getRoom) {
