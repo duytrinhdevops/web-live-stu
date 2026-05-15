@@ -2,6 +2,15 @@
 # deploy.sh — chạy trên VPS để build và khởi động lại app
 set -e
 
+# Kiểm tra Docker
+if ! command -v docker &>/dev/null; then
+  echo "==> Docker chưa được cài. Đang cài Docker..."
+  curl -fsSL https://get.docker.com | sh
+  systemctl enable docker
+  systemctl start docker
+  echo "==> Docker đã cài xong."
+fi
+
 echo "==> Pull code mới nhất..."
 git pull
 
