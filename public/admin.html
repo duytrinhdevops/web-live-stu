@@ -50,6 +50,33 @@
     .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
     .tag-admin { background: rgba(124,58,237,.2); color: #a78bfa; border: 1px solid #7c3aed44; }
     .tag-user  { background: rgba(14,165,233,.15); color: #38bdf8; border: 1px solid #0ea5e944; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      header {
+        flex-wrap: wrap;
+        padding: 12px 14px;
+        font-size: 16px;
+        gap: 8px;
+      }
+      .wrap { padding: 12px 8px; }
+      .card { padding: 14px 10px; }
+      h3 { font-size: 14px; }
+      .top-actions { flex-direction: column; align-items: stretch; }
+      .top-actions .btn,
+      .top-actions a.btn { width: 100%; text-align: center; display: block; padding: 10px; }
+      /* Scrollable tables */
+      #roomList, #statsList, #userList { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      #roomList table, #statsList table, #userList table { min-width: 680px; font-size: 12px; }
+      th, td { padding: 8px 8px; }
+      /* User form stacks */
+      .user-row { flex-direction: column; gap: 6px; }
+      .user-row input,
+      .user-row select { width: 100%; min-width: unset; flex: none; }
+      .action-col { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+      .import-label { padding: 5px 8px; font-size: 11px; }
+      .link-val { font-size: 10px; }
+    }
   </style>
 </head>
 <body>

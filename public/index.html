@@ -107,6 +107,53 @@
       color: #94a3b8;
     }
     #noRoom a { color: #a78bfa; text-decoration: none; font-weight: bold; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      header {
+        flex-wrap: wrap;
+        padding: 10px 12px;
+        font-size: 15px;
+        gap: 8px;
+      }
+      header > span:first-child { font-size: 14px; }
+      .wrap { padding: 8px; gap: 8px; }
+      .box { padding: 12px 10px; border-radius: 10px; }
+      h3 { font-size: 13px; margin-bottom: 8px; }
+      .group-title { font-size: 12px; margin: 8px 0 6px; }
+      .row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        margin-bottom: 8px;
+      }
+      .row > span {
+        min-width: unset !important;
+        font-size: 11px;
+        color: #94a3b8;
+      }
+      .row > span[id] { min-width: unset !important; }
+      input[type="range"] { width: 100%; margin: 0; }
+      input[type="text"], select {
+        font-size: 13px;
+        width: 100%;
+      }
+      .btn { font-size: 12px; padding: 8px 10px; }
+      .status { font-size: 13px; padding: 8px 10px; }
+      .obs-row { flex-wrap: wrap; padding: 8px; gap: 6px; }
+      .obs-url {
+        white-space: normal;
+        word-break: break-all;
+        width: 100%;
+        order: 10;
+        font-size: 10px;
+      }
+      .obs-copy { font-size: 10px; padding: 3px 8px; }
+      #stickerControls > div { padding: 8px; }
+    }
+    @media (max-width: 400px) {
+      header > span:first-child { display: none; }
+    }
   </style>
 </head>
 <body>
