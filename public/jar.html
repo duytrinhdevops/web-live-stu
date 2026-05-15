@@ -218,14 +218,16 @@
     // Tính bán kính tối đa vừa khớp bình (dựa theo vai bình)
     function maxGiftRadius(){
       const g = giftGeom();
-      return Math.floor(g.halfShoulder * 0.82);
+      // Cap theo miệng bình (halfTop) thay vì vai bình
+      // → quà luôn lọt qua miệng, không bị mắc kẹt
+      return Math.floor(g.halfTop * 0.68);
     }
 
     // Scale radius theo diamond count (log2), nhưng không vượt maxGiftRadius
     function diamondRadius(diamonds){
       const base = Math.max(8, Math.round(GIFT_R * gift.size));
       if (!diamonds || diamonds <= 1) return base;
-      const factor = 1 + 0.38 * Math.log2(diamonds); // 5d→1.87x  50d→2.58x  500d→3.29x
+      const factor = 1 + 0.30 * Math.log2(diamonds); // 5d→1.70x  50d→2.26x  500d→2.82x
       return Math.min(maxGiftRadius(), Math.round(base * factor));
     }
 
