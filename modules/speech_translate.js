@@ -342,8 +342,8 @@ function register(app, io, getRoom, saveRoomConfig) {
       speechEnabled:    room.state.speechEnabled,
       speechSourceLang: room.state.speechSourceLang,
       speechTargetLang: room.state.speechTargetLang,
-      speechApiKey:     room.state.speechApiKey,
       speechProvider:   room.state.speechProvider
+      // speechApiKey không gửi qua socket
     });
     saveRoomConfig(req.params.roomId);
     res.json({ success: true });

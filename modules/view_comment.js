@@ -31,10 +31,17 @@ function register(app, io, getRoom, saveRoomConfig) {
   });
 }
 
-function attachChatListener(conn, roomId, io) {
+function attachChatListener(conn, roomId, io, getRoom) {
   conn.on("chat", data => {
     const message = (data.comment || "").trim();
     if (!message) return;
+    if (getRoom) {
+      const bl = getRoom(roomId)?.state?.commentBlacklist;
+      if (Array.isArray(bl) && bl.length > 0) {
+        const lower = message.toLowerCase();
+        if (bl.some(w => lower.includes(w.toLowerCase()))) return;
+      }
+    }
     const user =
       data.nickname ||
       data.uniqueId ||

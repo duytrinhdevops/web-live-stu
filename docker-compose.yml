@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: web_live_stu
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/configs:/app/configs
+      - ./data/presets:/app/presets
+      - ./data/users.json:/app/users.json
+    environment:
+      - BEHIND_PROXY=${BEHIND_PROXY:-0}

@@ -8,14 +8,18 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0f1117; color: #e2e8f0; font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
     header { padding: 16px 24px; background: #171a23; border-bottom: 1px solid #2b3040; font-size: 20px; font-weight: bold; color: #a78bfa; }
-    .wrap { max-width: 860px; margin: 0 auto; padding: 20px; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 20px; }
     .card { background: #171a23; border: 1px solid #2b3040; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
     h3 { font-size: 15px; color: #93c5fd; margin-bottom: 14px; }
     .btn { border: none; border-radius: 8px; padding: 8px 16px; color: #fff; cursor: pointer; font-weight: 600; font-size: 13px; }
     .btn-purple { background: #7c3aed; }
     .btn-red    { background: #dc2626; }
+    .btn-blue   { background: #2563eb; }
+    .btn-teal   { background: #0d9488; }
     .btn-purple:hover { background: #6d28d9; }
     .btn-red:hover    { background: #b91c1c; }
+    .btn-blue:hover   { background: #1d4ed8; }
+    .btn-teal:hover   { background: #0f766e; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { text-align: left; padding: 8px 12px; color: #64748b; font-weight: 600; border-bottom: 1px solid #2b3040; }
     td { padding: 10px 12px; border-bottom: 1px solid #1e293b; vertical-align: top; }
@@ -31,20 +35,79 @@
     .copy-btn:hover { background: #334155; }
     .empty { color: #475569; font-size: 13px; padding: 20px; text-align: center; }
     .room-id { font-family: monospace; font-size: 14px; font-weight: bold; color: #a78bfa; }
+    .action-col { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+    .import-label { display: inline-block; background: #0d9488; color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .import-label:hover { background: #0f766e; }
+    .import-label input { display: none; }
+    .top-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    input[type=text], input[type=password], select {
+      background: #0f1117; border: 1px solid #334155; border-radius: 8px;
+      color: #f1f5f9; padding: 7px 10px; font-size: 13px; outline: none;
+    }
+    input[type=text]:focus, input[type=password]:focus { border-color: #7c3aed; }
+    .user-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .user-row input, .user-row select { flex: 1; min-width: 100px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .tag-admin { background: rgba(124,58,237,.2); color: #a78bfa; border: 1px solid #7c3aed44; }
+    .tag-user  { background: rgba(14,165,233,.15); color: #38bdf8; border: 1px solid #0ea5e944; }
   </style>
 </head>
 <body>
-  <header>Admin — Quản lý Room</header>
+  <header style="display:flex;justify-content:space-between;align-items:center">
+    <span>Admin — Quản lý Room</span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="adminName" style="font-size:13px;color:#64748b"></span>
+      <form action="/logout" method="post" style="margin:0">
+        <button type="submit" style="background:#334155;border:none;border-radius:6px;color:#cbd5e1;padding:5px 12px;font-size:12px;cursor:pointer">Đăng xuất</button>
+      </form>
+    </div>
+  </header>
   <div class="wrap">
     <div class="card">
       <h3>Tạo room mới</h3>
       <p style="font-size:13px;color:#64748b;margin-bottom:14px">Mỗi room = 1 user / idol. Tạo xong chia sẻ link Control Panel cho user.</p>
-      <button class="btn btn-purple" onclick="createRoom()">+ Tạo Room Mới</button>
+      <div class="top-actions">
+        <button class="btn btn-purple" onclick="createRoom()">+ Tạo Room Mới</button>
+        <button class="btn btn-blue" onclick="createRoomFromFile()">+ Tạo Room từ Config</button>
+        <a href="/preset.html" target="_blank" class="btn btn-teal" style="text-decoration:none">🎨 Trang Chọn Config</a>
+        <input type="file" id="importNewFile" accept=".json" style="display:none" onchange="handleImportNew(this)">
+      </div>
     </div>
 
     <div class="card">
       <h3>Danh sách rooms (<span id="roomCount">0</span>)</h3>
       <div id="roomList"><div class="empty">Chưa có room nào. Nhấn "Tạo Room Mới" để bắt đầu.</div></div>
+    </div>
+
+    <div class="card" id="statsCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="margin:0">Dashboard — Thống kê live</h3>
+        <button class="btn btn-blue" style="padding:5px 12px;font-size:12px" onclick="loadStats()">↻ Làm mới</button>
+      </div>
+      <div id="statsList"><div class="empty">Đang tải...</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Quản lý tài khoản</h3>
+      <p style="font-size:13px;color:#64748b;margin-bottom:16px">Tạo tài khoản user rồi gắn với một Room ID để user đăng nhập.</p>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:10px">Tạo tài khoản mới</div>
+        <div class="user-row">
+          <input type="text"     id="newUsername" placeholder="Tên đăng nhập (a-z, 0-9, _)" />
+          <input type="password" id="newPassword" placeholder="Mật khẩu" />
+          <select id="newRole">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+          <input type="text" id="newRoomId" placeholder="Room ID (để trống nếu admin)" />
+          <button class="btn btn-purple" style="padding:7px 14px;font-size:12px;white-space:nowrap" onclick="createUser()">+ Tạo</button>
+        </div>
+        <div id="createUserMsg" style="font-size:12px;min-height:16px;margin-top:4px"></div>
+      </div>
+
+      <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:10px">Danh sách tài khoản</div>
+      <div id="userList"><div class="empty">Đang tải...</div></div>
     </div>
   </div>
 
@@ -53,11 +116,15 @@
 
     function links(roomId) {
       return [
-        { label: 'Control',  url: `${BASE}/?room=${roomId}` },
-        { label: 'Jar OBS',  url: `${BASE}/jar.html?room=${roomId}` },
-        { label: 'Comment',  url: `${BASE}/comment.html?room=${roomId}` },
-        { label: 'Translate', url: `${BASE}/translate.html?room=${roomId}` },
-        { label: 'Speech',   url: `${BASE}/speech-overlay.html?room=${roomId}` },
+        { label: 'Control',     url: `${BASE}/?room=${roomId}` },
+        { label: 'Preset',      url: `${BASE}/preset.html?room=${roomId}` },
+        { label: 'Jar OBS',     url: `${BASE}/jar.html?room=${roomId}` },
+        { label: 'Comment',     url: `${BASE}/comment.html?room=${roomId}` },
+        { label: 'Translate',   url: `${BASE}/translate.html?room=${roomId}` },
+        { label: 'Speech',      url: `${BASE}/speech-overlay.html?room=${roomId}` },
+        { label: 'Alert',       url: `${BASE}/alert.html?room=${roomId}` },
+        { label: 'Leaderboard', url: `${BASE}/leaderboard.html?room=${roomId}` },
+        { label: 'Goal',        url: `${BASE}/goal.html?room=${roomId}` },
       ];
     }
 
@@ -88,6 +155,7 @@
               <th>TikTok</th>
               <th>Trạng thái</th>
               <th>Links</th>
+              <th>Config</th>
               <th></th>
             </tr>
           </thead>
@@ -114,6 +182,16 @@
                   </div>
                 </td>
                 <td>
+                  <div class="action-col">
+                    <button class="btn btn-blue" style="padding:5px 10px;font-size:12px" onclick="exportConfig('${r.id}')">↓ Export</button>
+                    <label class="import-label">
+                      ↑ Import
+                      <input type="file" accept=".json" onchange="importConfig('${r.id}', this)">
+                    </label>
+                    <button class="btn btn-teal" style="padding:5px 10px;font-size:12px" onclick="saveAsPreset('${r.id}')">★ Lưu Preset</button>
+                  </div>
+                </td>
+                <td>
                   <button class="btn btn-red" style="padding:5px 10px;font-size:12px" onclick="deleteRoom('${r.id}')">Xoá</button>
                 </td>
               </tr>
@@ -128,9 +206,83 @@
       const data = await res.json();
       if (data.roomId) {
         await loadRooms();
-        // Auto open control panel for the new room
         window.open(`/?room=${data.roomId}`, '_blank');
       }
+    }
+
+    function createRoomFromFile() {
+      document.getElementById('importNewFile').click();
+    }
+
+    async function handleImportNew(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const text = await file.text();
+      let cfg;
+      try { cfg = JSON.parse(text); } catch { alert('File JSON không hợp lệ.'); return; }
+
+      // Tạo room mới rồi import config vào
+      const res  = await fetch('/admin/rooms/create', { method: 'POST' });
+      const data = await res.json();
+      if (!data.roomId) { alert('Tạo room thất bại.'); return; }
+
+      await fetch(`/admin/rooms/${data.roomId}/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg)
+      });
+
+      await loadRooms();
+      window.open(`/?room=${data.roomId}`, '_blank');
+      input.value = '';
+    }
+
+    function exportConfig(roomId) {
+      window.location.href = `/admin/rooms/${roomId}/export`;
+    }
+
+    async function importConfig(roomId, input) {
+      const file = input.files[0];
+      if (!file) return;
+      const text = await file.text();
+      let cfg;
+      try { cfg = JSON.parse(text); } catch { alert('File JSON không hợp lệ.'); return; }
+
+      if (!confirm(`Import config vào room "${roomId}"? Toàn bộ settings hiện tại sẽ bị ghi đè.`)) {
+        input.value = '';
+        return;
+      }
+
+      const res = await fetch(`/admin/rooms/${roomId}/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg)
+      });
+      const data = await res.json();
+      if (data.success) {
+        const btn = input.closest('label');
+        const orig = btn.childNodes[0].textContent;
+        btn.childNodes[0].textContent = '✓ Done';
+        setTimeout(() => { btn.childNodes[0].textContent = orig; }, 1500);
+      } else {
+        alert('Import thất bại.');
+      }
+      input.value = '';
+    }
+
+    async function saveAsPreset(roomId) {
+      const label = prompt('Tên hiển thị cho preset này:', '');
+      if (label === null) return;
+      const name  = label.trim() || roomId;
+      const filename = name.toLowerCase().replace(/[^a-z0-9_\-]/g, '_') + '.json';
+      const res  = await fetch('/admin/presets/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, label: name, roomId })
+      });
+      const data = await res.json();
+      if (data.success) alert(`Đã lưu preset "${name}" (${filename})`);
+      else alert('Lưu preset thất bại.');
     }
 
     async function deleteRoom(roomId) {
@@ -139,8 +291,128 @@
       await loadRooms();
     }
 
+    // ── Auth check ────────────────────────────────────────────────────────
+    fetch('/api/me').then(r => r.json()).then(d => {
+      if (d.username) document.getElementById('adminName').textContent = d.username;
+    });
+
+    // ── User management ───────────────────────────────────────────────────
+    async function loadUsers() {
+      const res   = await fetch('/admin/users');
+      const users = await res.json();
+      const el    = document.getElementById('userList');
+      if (users.length === 0) { el.innerHTML = '<div class="empty">Chưa có tài khoản nào.</div>'; return; }
+      el.innerHTML = `
+        <table>
+          <thead><tr><th>Username</th><th>Role</th><th>Room ID</th><th>Đổi mật khẩu</th><th></th></tr></thead>
+          <tbody>
+            ${users.map(u => `
+              <tr>
+                <td style="font-weight:600;color:#f1f5f9">${u.username}</td>
+                <td><span class="tag ${u.role === 'admin' ? 'tag-admin' : 'tag-user'}">${u.role}</span></td>
+                <td>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <input type="text" value="${u.roomId || ''}" placeholder="Room ID"
+                      style="width:100px;padding:4px 8px;font-size:12px"
+                      onchange="updateUserRoom('${u.username}', this.value)" />
+                  </div>
+                </td>
+                <td>
+                  <div style="display:flex;gap:6px;align-items:center">
+                    <input type="password" id="pw_${u.username}" placeholder="Mật khẩu mới"
+                      style="width:130px;padding:4px 8px;font-size:12px" />
+                    <button class="btn btn-teal" style="padding:4px 10px;font-size:11px" onclick="changePassword('${u.username}')">Đổi</button>
+                  </div>
+                </td>
+                <td>
+                  <button class="btn btn-red" style="padding:4px 10px;font-size:11px" onclick="deleteUser('${u.username}')">Xoá</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    async function createUser() {
+      const username = document.getElementById('newUsername').value.trim();
+      const password = document.getElementById('newPassword').value;
+      const role     = document.getElementById('newRole').value;
+      const roomId   = document.getElementById('newRoomId').value.trim();
+      const msg      = document.getElementById('createUserMsg');
+      if (!username || !password) { msg.style.color='#fca5a5'; msg.textContent='Nhập đủ username và mật khẩu.'; return; }
+      const res  = await fetch('/admin/users/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role, roomId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        msg.style.color = '#4ade80'; msg.textContent = `Đã tạo tài khoản "${username}"`;
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newRoomId').value = '';
+        loadUsers();
+      } else { msg.style.color='#fca5a5'; msg.textContent = data.error || 'Tạo thất bại'; }
+    }
+
+    async function updateUserRoom(username, roomId) {
+      await fetch(`/admin/users/${username}/edit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId })
+      });
+    }
+
+    async function changePassword(username) {
+      const pw = document.getElementById(`pw_${username}`).value;
+      if (!pw) return;
+      const res  = await fetch(`/admin/users/${username}/edit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+      });
+      const data = await res.json();
+      if (data.success) { document.getElementById(`pw_${username}`).value = ''; alert(`Đã đổi mật khẩu cho "${username}"`); }
+    }
+
+    async function deleteUser(username) {
+      if (!confirm(`Xoá tài khoản "${username}"?`)) return;
+      await fetch(`/admin/users/${username}`, { method: 'DELETE' });
+      loadUsers();
+    }
+
+    async function loadStats() {
+      const res   = await fetch('/admin/stats');
+      const stats = await res.json();
+      const el    = document.getElementById('statsList');
+      if (!stats.length) { el.innerHTML = '<div class="empty">Chưa có room nào.</div>'; return; }
+      el.innerHTML = `
+        <table>
+          <thead><tr><th>Room</th><th>TikTok</th><th>Trạng thái</th><th>Người xem</th><th>❤️ Tim</th><th>🏆 Top Donor</th><th>🎯 Goal</th></tr></thead>
+          <tbody>
+            ${stats.map(s => {
+              const goalPct = s.goalTarget > 0 ? Math.min(100, Math.round(s.goalCurrent / s.goalTarget * 100)) : 0;
+              return `<tr>
+                <td><span class="room-id">${s.id}</span></td>
+                <td style="color:#e2e8f0">${s.tiktokUniqueId || '<span style="color:#475569">—</span>'}</td>
+                <td>${s.isConnected ? '<span class="badge badge-green">Live</span>' : '<span class="badge badge-gray">Offline</span>'}</td>
+                <td style="color:#7dd3fc">${s.viewers.toLocaleString()}</td>
+                <td style="color:#f87171">${s.likes.toLocaleString()}</td>
+                <td style="color:#fbbf24">${s.topDonor ? `${s.topDonor.username} (💎${s.topDonor.diamonds.toLocaleString()})` : '—'}</td>
+                <td>
+                  ${s.goalTarget > 0
+                    ? `<div style="font-size:11px;color:#94a3b8;margin-bottom:3px">${s.goalCurrent.toLocaleString()} / ${s.goalTarget.toLocaleString()}</div>
+                       <div style="background:#1e293b;border-radius:4px;height:6px;overflow:hidden"><div style="background:#7c3aed;width:${goalPct}%;height:100%"></div></div>`
+                    : '<span style="color:#475569">—</span>'}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    }
+
     loadRooms();
-    setInterval(loadRooms, 10000); // auto refresh mỗi 10 giây
+    loadUsers();
+    loadStats();
+    setInterval(loadRooms, 10000);
+    setInterval(loadStats, 15000);
   </script>
 </body>
 </html>

@@ -78,7 +78,7 @@
 
     // jar: vị trí/scale ảnh vẽ (có thể chỉnh qua server)
     const jar={width:1,height:1,x:0,y:0,img:null,walls:[]};
-    const gift={width:1,height:1,x:0,y:0,size:1,bounce:0.02,friction:0.6};
+    const gift={width:1,height:1,x:0,y:0,size:1,bounce:0.02,friction:0.6,spacing:0};
     // physicsBox LUÔN đồng bộ với jar (không tách riêng nữa)
     const gifts=[];
     const giftCache=new Map();
@@ -215,16 +215,31 @@
       World.add(world, walls);
     }
 
+    // Tính bán kính tối đa vừa khớp bình (dựa theo vai bình)
+    function maxGiftRadius(){
+      const g = giftGeom();
+      return Math.floor(g.halfShoulder * 0.82);
+    }
+
+    // Scale radius theo diamond count (log2), nhưng không vượt maxGiftRadius
+    function diamondRadius(diamonds){
+      const base = Math.max(8, Math.round(GIFT_R * gift.size));
+      if (!diamonds || diamonds <= 1) return base;
+      const factor = 1 + 0.38 * Math.log2(diamonds); // 5d→1.87x  50d→2.58x  500d→3.29x
+      return Math.min(maxGiftRadius(), Math.round(base * factor));
+    }
+
     // ── Spawn quà rơi từ TRÊN MÀN HÌNH xuống ────────────────────────────
-    function spawnGiftCore(imgSrc){
+    function spawnGiftCore(imgSrc, diamonds){
       const m = mouthCenter();
-      // Kích cỡ quà theo gift.size, không dùng gift.width/height (đó là vùng physics box)
-      const r = Math.max(8, Math.round(GIFT_R * gift.size));
+      const r = diamondRadius(diamonds || 0);
+      // physR nhỏ hơn r khi spacing > 0 → quà đè lên nhau về mặt visual
+      const physR = Math.max(4, Math.round(r * (1 - gift.spacing * 0.9)));
       // X giới hạn chặt trong miệng bình để rơi đúng vào
       const x = m.cx + (Math.random()*2-1) * m.halfW * 0.45;
       const y = -r * 2;
 
-      const body = Bodies.circle(x, y, r, {
+      const body = Bodies.circle(x, y, physR, {
         friction:       gift.friction,
         frictionAir:    0.05,
         frictionStatic: gift.friction * 0.8,
@@ -255,7 +270,7 @@
 
     function spawnGift(){
       const src = GIFTS[Math.floor(Math.random()*GIFTS.length)];
-      spawnGiftCore(src);
+      spawnGiftCore(src, 0);
     }
 
     // Hàng đợi quà — rơi theo dòng thay vì đổ đống cùng lúc
@@ -264,7 +279,8 @@
 
     setInterval(() => {
       if (giftQueue.length === 0) return;
-      spawnGiftCore(giftQueue.shift());
+      const item = giftQueue.shift();
+      spawnGiftCore(item.imgSrc, item.diamonds);
     }, DRAIN_MS);
 
     // Dọn quà đã ra ngoài màn hình (tràn xuống đáy)
@@ -519,9 +535,49 @@
       if (roomId) socket.emit('joinRoom', roomId);
     });
 
+    // Sound tiers: silent (0-4), soft (5-49), medium (50-499), big (500+)
+    let soundEnabled = true;
+    function playGiftSound(diamonds) {
+      if (!soundEnabled) return;
+      try {
+        const ctx2 = new (window.AudioContext || window.webkitAudioContext)();
+        const osc  = ctx2.createOscillator();
+        const gain = ctx2.createGain();
+        osc.connect(gain); gain.connect(ctx2.destination);
+        const t = ctx2.currentTime;
+        if (diamonds >= 500) {
+          // big gift — ascending fanfare
+          osc.frequency.setValueAtTime(523, t);
+          osc.frequency.setValueAtTime(659, t + 0.08);
+          osc.frequency.setValueAtTime(784, t + 0.16);
+          osc.frequency.setValueAtTime(1047, t + 0.24);
+          gain.gain.setValueAtTime(0.35, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+          osc.start(t); osc.stop(t + 0.55);
+        } else if (diamonds >= 50) {
+          // medium gift — two-tone ding
+          osc.frequency.setValueAtTime(660, t);
+          osc.frequency.exponentialRampToValueAtTime(880, t + 0.12);
+          gain.gain.setValueAtTime(0.25, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+          osc.start(t); osc.stop(t + 0.3);
+        } else if (diamonds >= 5) {
+          // small gift — soft click
+          osc.frequency.setValueAtTime(440, t);
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+          osc.start(t); osc.stop(t + 0.15);
+        }
+        // < 5 diamonds: silent
+      } catch {}
+    }
+
     socket.on('giftDrop', data => {
-      const imgSrc = data.imgPath || GIFTS[Math.floor(Math.random() * GIFTS.length)];
-      giftQueue.push(imgSrc);
+      const imgSrc   = data.imgPath || GIFTS[Math.floor(Math.random() * GIFTS.length)];
+      const diamonds = Number(data.diamonds || 0);
+      giftQueue.push({ imgSrc, diamonds });
+      playGiftSound(diamonds);
     });
 
     socket.on('jarReset', () => {
@@ -551,6 +607,7 @@
       if (state.giftSize      !== undefined) gift.size     = state.giftSize;
       if (state.giftBounce    !== undefined) gift.bounce   = state.giftBounce;
       if (state.giftFriction  !== undefined) gift.friction = state.giftFriction;
+      if (state.giftSpacing   !== undefined) gift.spacing  = state.giftSpacing;
       // mouthOpacity không restore từ state — luôn bắt đầu ẩn (0), chỉ thay đổi khi user kéo slider
 
       if (state.jarImageUrl) {
@@ -593,7 +650,7 @@
       jar.x      = 0; jar.y      = 0;
       gift.width = 1; gift.height = 1;
       gift.x     = 0; gift.y     = 0;
-      gift.size  = 1; gift.bounce = 0.02; gift.friction = 0.6;
+      gift.size  = 1; gift.bounce = 0.02; gift.friction = 0.6; gift.spacing = 0;
       allScale = 1.0;
       mouthOpacity = 0; mouthX = 0; mouthY = 0; mouthScale = 1.0;
       syncUI(); updatePosDisplay(); buildJarWalls();
@@ -621,6 +678,7 @@
       if (control === 'giftSize')      gift.size     = clamp(v, 0.4, 1.8);
       if (control === 'giftBounce')    gift.bounce   = clamp(v, 0.0, 0.35);
       if (control === 'giftFriction')  gift.friction = clamp(v, 0.1, 1.0);
+      if (control === 'giftSpacing')   gift.spacing  = clamp(v, 0.0, 0.8);
       if (control === 'allScale')      { allScale     = clamp(v, 0.2, 3.0); buildJarWalls(); }
       if (control === 'mouthOpacity')  mouthOpacity  = clamp(v, 0.0, 1.0);
       if (control === 'mouthX')        mouthX        = clamp(v, -400, 400);
@@ -678,8 +736,10 @@
 
     // Expose functions for external control
     window.jarRain = function() {
+      const testDiamonds = [1, 1, 5, 5, 10, 10, 50, 100, 500];
       for (let i = 0; i < 20; i++) {
-        giftQueue.push(GIFTS[Math.floor(Math.random()*GIFTS.length)]);
+        const d = testDiamonds[Math.floor(Math.random() * testDiamonds.length)];
+        giftQueue.push({ imgSrc: GIFTS[Math.floor(Math.random()*GIFTS.length)], diamonds: d });
       }
     };
 

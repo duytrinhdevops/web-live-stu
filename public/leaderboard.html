@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Leaderboard Overlay</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: transparent;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #board {
+      background: linear-gradient(160deg, rgba(10,8,22,0.94) 0%, rgba(20,12,44,0.94) 100%);
+      border: 1px solid rgba(124,58,237,0.4);
+      border-radius: 18px;
+      padding: 16px 18px;
+      min-width: 280px;
+      max-width: 360px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    }
+
+    .lb-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(124,58,237,0.25);
+    }
+    .lb-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #a78bfa;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      flex: 1;
+    }
+    .lb-crown { font-size: 18px; }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 6px;
+      border-radius: 10px;
+      transition: background .2s;
+      animation: fadeRow .4s ease both;
+    }
+    .lb-row:nth-child(even) { background: rgba(255,255,255,0.03); }
+
+    @keyframes fadeRow {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .lb-rank {
+      font-size: 13px;
+      font-weight: 800;
+      width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .rank-1 { color: #fbbf24; font-size: 16px; }
+    .rank-2 { color: #94a3b8; font-size: 15px; }
+    .rank-3 { color: #b45309; font-size: 14px; }
+    .rank-other { color: #475569; }
+
+    .lb-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .lb-diamonds {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fbbf24;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .lb-empty {
+      text-align: center;
+      color: #334155;
+      font-size: 13px;
+      padding: 20px 0;
+    }
+  </style>
+</head>
+<body>
+<div id="board">
+  <div class="lb-header">
+    <span class="lb-crown">🏆</span>
+    <span class="lb-title">Top người tặng quà</span>
+  </div>
+  <div id="list"><div class="lb-empty">Chưa có dữ liệu</div></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const roomId = new URLSearchParams(location.search).get('room') || '';
+  const socket = io({ transports: ['websocket', 'polling'], reconnection: true });
+  socket.on('connect', () => { if (roomId) socket.emit('joinRoom', roomId); });
+
+  const MEDAL = ['🥇','🥈','🥉'];
+
+  function render(list) {
+    const el = document.getElementById('list');
+    if (!list || !list.length) {
+      el.innerHTML = '<div class="lb-empty">Chưa có dữ liệu</div>';
+      return;
+    }
+    el.innerHTML = list.map((item, i) => {
+      const rankClass = i < 3 ? `rank-${i+1}` : 'rank-other';
+      const rankText  = i < 3 ? MEDAL[i] : `#${i+1}`;
+      return `
+        <div class="lb-row" style="animation-delay:${i*40}ms">
+          <div class="lb-rank ${rankClass}">${rankText}</div>
+          <div class="lb-name">${esc(item.username)}</div>
+          <div class="lb-diamonds">💎 ${item.diamonds.toLocaleString()}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  socket.on('leaderboardUpdate', render);
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>

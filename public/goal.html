@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Goal Overlay</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: transparent;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #goal-wrap {
+      background: linear-gradient(135deg, rgba(10,8,22,0.93) 0%, rgba(20,10,40,0.93) 100%);
+      border: 1px solid rgba(124,58,237,0.4);
+      border-radius: 16px;
+      padding: 14px 18px;
+      min-width: 320px;
+      max-width: 480px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+
+    .goal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .goal-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #c4b5fd;
+    }
+    .goal-numbers {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .goal-numbers span {
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    .goal-track {
+      background: rgba(255,255,255,0.07);
+      border-radius: 100px;
+      height: 18px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .goal-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, #7c3aed, #a78bfa, #c4b5fd);
+      transition: width .6s cubic-bezier(0.34,1.4,0.64,1);
+      position: relative;
+      min-width: 0;
+    }
+
+    .goal-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+      animation: shine 2s ease-in-out infinite;
+    }
+    @keyframes shine {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(200%); }
+    }
+
+    .goal-fill.done {
+      background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80);
+    }
+
+    .goal-pct {
+      font-size: 11px;
+      font-weight: 800;
+      color: #fff;
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+
+    .goal-done-badge {
+      display: none;
+      margin-top: 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4ade80;
+      animation: pop .4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .goal-done-badge.show { display: block; }
+    @keyframes pop {
+      from { opacity: 0; transform: scale(.6); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+<div id="goal-wrap">
+  <div class="goal-header">
+    <div class="goal-label" id="goalLabel">Mục tiêu hôm nay</div>
+    <div class="goal-numbers"><span id="goalCurrent">0</span> / <span id="goalTarget">0</span> 💎</div>
+  </div>
+  <div class="goal-track">
+    <div class="goal-fill" id="goalFill" style="width:0%"></div>
+    <div class="goal-pct" id="goalPct">0%</div>
+  </div>
+  <div class="goal-done-badge" id="goalDone">🎉 Đã đạt mục tiêu!</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const roomId = new URLSearchParams(location.search).get('room') || '';
+  const socket = io({ transports: ['websocket', 'polling'], reconnection: true });
+  socket.on('connect', () => { if (roomId) socket.emit('joinRoom', roomId); });
+
+  function update({ current, target, label }) {
+    document.getElementById('goalLabel').textContent   = label || 'Mục tiêu hôm nay';
+    document.getElementById('goalCurrent').textContent = Number(current || 0).toLocaleString();
+    document.getElementById('goalTarget').textContent  = Number(target  || 0).toLocaleString();
+
+    const pct   = target > 0 ? Math.min(100, Math.round(current / target * 100)) : 0;
+    const fill  = document.getElementById('goalFill');
+    const badge = document.getElementById('goalDone');
+
+    fill.style.width = pct + '%';
+    document.getElementById('goalPct').textContent = pct + '%';
+
+    if (pct >= 100) {
+      fill.classList.add('done');
+      badge.classList.add('show');
+    } else {
+      fill.classList.remove('done');
+      badge.classList.remove('show');
+    }
+  }
+
+  socket.on('goalUpdate', update);
+  socket.on('jarStateInit', s => {
+    if (s.goalTarget !== undefined)
+      update({ current: s.goalCurrent, target: s.goalTarget, label: s.goalLabel });
+  });
+</script>
+</body>
+</html>

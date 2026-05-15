@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Đăng nhập</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #171a23;
+      border: 1px solid #2b3040;
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 380px;
+    }
+    h1 {
+      font-size: 22px;
+      color: #a78bfa;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .sub {
+      font-size: 13px;
+      color: #64748b;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      padding: 10px 12px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #7c3aed; }
+    button {
+      width: 100%;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 11px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+      margin-top: 4px;
+    }
+    button:hover { background: #6d28d9; }
+    button:disabled { opacity: .5; cursor: default; }
+    #errMsg {
+      background: rgba(220,38,38,.15);
+      border: 1px solid #dc262644;
+      border-radius: 8px;
+      color: #fca5a5;
+      font-size: 13px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>TikTok Live Studio</h1>
+    <p class="sub">Đăng nhập để tiếp tục</p>
+
+    <div id="errMsg"></div>
+
+    <form onsubmit="doLogin(event)">
+      <label>Tên đăng nhập</label>
+      <input id="username" type="text" autocomplete="username" autocapitalize="none" required />
+      <label>Mật khẩu</label>
+      <input id="password" type="password" autocomplete="current-password" required />
+      <button id="btnLogin" type="submit">Đăng nhập</button>
+    </form>
+  </div>
+
+  <script>
+    async function doLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnLogin');
+      const err = document.getElementById('errMsg');
+      btn.disabled = true;
+      btn.textContent = 'Đang đăng nhập...';
+      err.style.display = 'none';
+
+      try {
+        const res  = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          location.href = data.redirect;
+        } else {
+          err.textContent = data.error || 'Đăng nhập thất bại';
+          err.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Đăng nhập';
+        }
+      } catch {
+        err.textContent = 'Lỗi kết nối tới server';
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Đăng nhập';
+      }
+    }
+  </script>
+</body>
+</html>

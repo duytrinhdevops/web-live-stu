@@ -47,6 +47,11 @@
       border-radius: 14px;
       padding: 14px;
     }
+    .obs-row { display:flex; align-items:center; gap:8px; background:#0f1117; border:1px solid #1e293b; border-radius:8px; padding:8px 10px; }
+    .obs-label { font-size:11px; font-weight:600; color:#64748b; min-width:72px; }
+    .obs-url { font-size:11px; font-family:monospace; color:#93c5fd; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .obs-copy { background:#1e293b; border:1px solid #334155; border-radius:5px; color:#94a3b8; padding:3px 9px; font-size:11px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+    .obs-copy:hover { background:#334155; color:#e2e8f0; }
     .row {
       display: flex;
       align-items: center;
@@ -112,7 +117,13 @@
 
   <header>
     <span>TikTok LIVE Effect Control</span>
-    <span class="room-badge">Room: <span id="roomIdBadge">—</span></span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="room-badge">Room: <span id="roomIdBadge">—</span></span>
+      <span id="userChip" style="font-size:12px;color:#64748b"></span>
+      <form action="/logout" method="post" style="margin:0">
+        <button type="submit" style="background:#1e293b;border:1px solid #334155;border-radius:6px;color:#94a3b8;padding:4px 11px;font-size:12px;cursor:pointer">Đăng xuất</button>
+      </form>
+    </div>
   </header>
   <main class="wrap">
     <section class="box">
@@ -126,6 +137,23 @@
         <button class="btn btn-red" onclick="disconnectLive()">Disconnect</button>
       </div>
       <div id="liveStatus" class="status bad">Not connected</div>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:13px;color:#64748b">
+        <span>👁 <b id="viewerCount" style="color:#e2e8f0">—</b> xem</span>
+        <span>❤️ <b id="likeCount"   style="color:#e2e8f0">—</b> tim</span>
+      </div>
+    </section>
+
+    <section class="box">
+      <h3>Config</h3>
+      <button class="btn btn-purple" style="margin-bottom:12px;width:100%" onclick="window.open('/preset.html?room='+roomId,'_blank')">🎨 Chọn Preset Config</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-green" onclick="exportConfig()">↓ Xuất config</button>
+        <label style="display:inline-flex;align-items:center;gap:6px;background:#7c3aed;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;color:#fff">
+          ↑ Nhập config
+          <input type="file" accept=".json" style="display:none" onchange="importConfig(this)">
+        </label>
+      </div>
+      <div id="configMsg" style="font-size:12px;min-height:16px;margin-top:8px"></div>
     </section>
 
     <section class="box">
@@ -199,6 +227,10 @@
         <span>Độ sát (ma sát)</span>
         <input id="slGiftFriction" type="range" min="10" max="100" value="60" step="1" oninput="onEffectSlider('giftFriction', this)">
       </div>
+      <div class="row">
+        <span>Đè lên nhau</span>
+        <input id="slGiftSpacing" type="range" min="0" max="80" value="0" step="1" oninput="onEffectSlider('giftSpacing', this)">
+      </div>
 
       <div class="group-title">Hiệu ứng vòng miệng bình</div>
       <div class="row">
@@ -222,6 +254,18 @@
       <div style="font-size:12px;color:#9ca3af;margin-bottom:8px">Mỗi sticker có thể upload ảnh riêng, chỉnh size và vị trí riêng.</div>
       <div id="stickerControls"></div>
 
+      <div class="group-title" style="margin-top:12px">Thả quà thử nghiệm</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
+        <button class="btn" style="background:#1e3a5f;font-size:12px;padding:7px 4px" onclick="dropGift(1,1)">🌹 1 xu</button>
+        <button class="btn" style="background:#1e3a5f;font-size:12px;padding:7px 4px" onclick="dropGift(5,1)">💎 5 xu</button>
+        <button class="btn" style="background:#1e3a5f;font-size:12px;padding:7px 4px" onclick="dropGift(10,1)">💎 10 xu</button>
+        <button class="btn" style="background:#2d4a1e;font-size:12px;padding:7px 4px" onclick="dropGift(50,1)">💎 50 xu</button>
+        <button class="btn" style="background:#2d4a1e;font-size:12px;padding:7px 4px" onclick="dropGift(100,1)">💎 100 xu</button>
+        <button class="btn" style="background:#2d4a1e;font-size:12px;padding:7px 4px" onclick="dropGift(500,1)">💎 500 xu</button>
+        <button class="btn" style="background:#4a1e3a;font-size:12px;padding:7px 4px" onclick="dropGift(1000,1)">👑 1000 xu</button>
+        <button class="btn" style="background:#4a1e3a;font-size:12px;padding:7px 4px" onclick="dropGift(5000,1)">👑 5000 xu</button>
+        <button class="btn" style="background:#4a1e3a;font-size:12px;padding:7px 4px" onclick="dropGift(10000,1)">🔥 10000 xu</button>
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button class="btn btn-green" onclick="testRain()">Test Rain</button>
         <button class="btn btn-red" onclick="testReset()">Reset Jar</button>
@@ -229,6 +273,12 @@
         <button class="btn" onclick="saveConfig()">Lưu Config</button>
       </div>
       <div id="saveNotice" style="margin-top:8px;font-size:13px;color:#10b981;min-height:18px"></div>
+    </section>
+
+    <section class="box">
+      <h3>Link OBS Browser Source</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:14px">Dán từng link vào OBS → Sources → Browser Source.</p>
+      <div id="obsLinks" style="display:flex;flex-direction:column;gap:8px"></div>
     </section>
 
     <section class="box">
@@ -290,9 +340,6 @@
 
     <section class="box">
       <h3>Comment TikTok Live</h3>
-      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
-        OBS Browser Source: <code id="commentUrl" style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#93c5fd"></code>
-      </div>
       <div class="row">
         <span>Hiển thị comment</span>
         <button id="commentToggleBtn" class="btn btn-red" onclick="toggleComment()">Ẩn Comment</button>
@@ -309,9 +356,6 @@
 
     <section class="box">
       <h3>Dịch comment sang ngôn ngữ khác</h3>
-      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
-        OBS Browser Source: <code id="translateUrl" style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#93c5fd"></code>
-      </div>
       <div class="row">
         <span>Bật dịch</span>
         <button id="translateToggleBtn" class="btn btn-green" onclick="toggleTranslate()">Bật</button>
@@ -338,7 +382,6 @@
     <section class="box">
       <h3>Dịch giọng nói (Speech → Text → Dịch)</h3>
       <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">
-        OBS Browser Source: <code id="speechUrl" style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#93c5fd"></code><br>
         Cần cài: <code style="background:#0f1117;padding:2px 6px;border-radius:4px;color:#fbbf24">FFmpeg</code> + API key (Groq miễn phí hoặc OpenAI). Tự động chạy khi kết nối TikTok.
       </div>
       <div class="row">
@@ -390,10 +433,125 @@
         <button class="btn btn-red" onclick="clearSpeech()">Xoá subtitle</button>
       </div>
     </section>
+
+    <section class="box">
+      <h3>Alert — Thông báo quà lớn &amp; follow</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">Hiện popup khi nhận quà đạt ngưỡng hoặc có follow mới.</div>
+      <div class="row">
+        <span>Ngưỡng quà (xu)</span>
+        <input id="inpAlertMin" type="number" min="0" max="99999" value="50"
+          style="width:100px;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px;text-align:center">
+        <button class="btn btn-blue" onclick="saveAlertSettings()">Lưu</button>
+      </div>
+      <div class="row">
+        <span>Thông báo follow</span>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input id="chkAlertFollows" type="checkbox" checked onchange="saveAlertSettings()" style="width:16px;height:16px">
+          Bật thông báo follow
+        </label>
+      </div>
+      <div class="row">
+        <span>Âm thanh alert</span>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input id="chkAlertSound" type="checkbox" checked onchange="saveAlertSettings()" style="width:16px;height:16px">
+          Bật âm thanh
+        </label>
+      </div>
+    </section>
+
+    <section class="box">
+      <h3>Goal — Mục tiêu quà</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">Thanh tiến trình hiển thị trên OBS (goal.html).</div>
+      <div class="row">
+        <span>Nhãn mục tiêu</span>
+        <input id="inpGoalLabel" type="text" value="Mục tiêu hôm nay"
+          style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+      </div>
+      <div class="row">
+        <span>Mục tiêu (xu)</span>
+        <input id="inpGoalTarget" type="number" min="0" value="0"
+          style="width:110px;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px;text-align:center">
+        <button class="btn btn-blue" onclick="saveGoal()">Lưu</button>
+      </div>
+      <div class="row">
+        <span>Tiến trình hiện tại</span>
+        <span id="goalCurrentDisplay" style="font-size:14px;font-weight:700;color:#fbbf24">0</span>
+        <span style="font-size:13px;color:#64748b">xu</span>
+        <button class="btn btn-red" onclick="resetGoal()" style="margin-left:auto">Reset 0</button>
+      </div>
+      <div style="background:#0f1117;border-radius:8px;height:10px;margin-top:4px;overflow:hidden">
+        <div id="goalProgressBar" style="height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);transition:width .5s;width:0%"></div>
+      </div>
+    </section>
+
+    <section class="box">
+      <h3>Leaderboard — Top người tặng quà</h3>
+      <div id="leaderboardTable" style="font-size:13px;color:#64748b;padding:8px 0">Chưa có dữ liệu...</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-red" onclick="resetLeaderboard()">Reset Leaderboard</button>
+      </div>
+    </section>
+
+    <section class="box">
+      <h3>Comment Filter — Lọc từ cấm</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">Comment chứa từ này sẽ bị ẩn hoàn toàn (không hiển thị trên overlay).</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input id="inpBlacklist" type="text" placeholder="Thêm từ cấm..."
+          style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px"
+          onkeydown="if(event.key==='Enter')addBlackword()">
+        <button class="btn btn-red" onclick="addBlackword()">Thêm</button>
+      </div>
+      <div id="blacklistChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </section>
+
+    <section class="box">
+      <h3>Auto-Reset — Tự động reset bình</h3>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">Tự động reset bình quà sau X phút (0 = tắt).</div>
+      <div class="row">
+        <span>Reset sau (phút)</span>
+        <input id="inpAutoReset" type="number" min="0" max="1440" value="0"
+          style="width:100px;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px;text-align:center">
+        <button class="btn btn-blue" onclick="saveAutoReset()">Lưu</button>
+      </div>
+      <div id="autoResetStatus" style="font-size:12px;color:#64748b;margin-top:6px"></div>
+    </section>
+
+    <section class="box">
+      <h3>Lịch sử quà</h3>
+      <div id="giftHistoryList" style="max-height:240px;overflow-y:auto;font-size:12px;color:#64748b">Chưa có dữ liệu...</div>
+      <button class="btn btn-blue" onclick="loadGiftHistory()" style="margin-top:8px;width:100%">Tải lại lịch sử</button>
+    </section>
+
+    <section class="box">
+      <h3>Đổi mật khẩu</h3>
+      <div class="row">
+        <span>Mật khẩu cũ</span>
+        <input id="inpOldPw" type="password" placeholder="Mật khẩu hiện tại"
+          style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+      </div>
+      <div class="row">
+        <span>Mật khẩu mới</span>
+        <input id="inpNewPw" type="password" placeholder="Tối thiểu 6 ký tự"
+          style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+      </div>
+      <div class="row">
+        <span>Xác nhận</span>
+        <input id="inpConfirmPw" type="password" placeholder="Nhập lại mật khẩu mới"
+          style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:13px">
+      </div>
+      <button class="btn btn-blue" onclick="changePassword()" style="width:100%;margin-top:4px">Đổi mật khẩu</button>
+      <div id="changePwMsg" style="font-size:12px;min-height:16px;margin-top:8px"></div>
+    </section>
   </main>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    // ── Auth check ────────────────────────────────────────────────────────
+    fetch('/api/me').then(r => r.json()).then(d => {
+      if (!d.username) { location.href = '/login'; return; }
+      document.getElementById('userChip').textContent = d.username;
+    }).catch(() => { location.href = '/login'; });
+
     // ── Room ID từ URL ────────────────────────────────────────────────────
     const roomId = new URLSearchParams(location.search).get('room') || '';
 
@@ -404,9 +562,32 @@
     } else {
       document.getElementById('roomIdBadge').textContent = roomId;
       const base = location.origin;
-      document.getElementById('commentUrl').textContent  = `${base}/comment.html?room=${roomId}`;
-      document.getElementById('translateUrl').textContent = `${base}/translate.html?room=${roomId}`;
-      document.getElementById('speechUrl').textContent   = `${base}/speech-overlay.html?room=${roomId}`;
+      // OBS link panel
+      const obsLinks = [
+        { label: 'Jar',         url: `${base}/jar.html?room=${roomId}` },
+        { label: 'Comment',     url: `${base}/comment.html?room=${roomId}` },
+        { label: 'Translate',   url: `${base}/translate.html?room=${roomId}` },
+        { label: 'Speech',      url: `${base}/speech-overlay.html?room=${roomId}` },
+        { label: 'Alert',       url: `${base}/alert.html?room=${roomId}` },
+        { label: 'Leaderboard', url: `${base}/leaderboard.html?room=${roomId}` },
+        { label: 'Goal',        url: `${base}/goal.html?room=${roomId}` },
+      ];
+      document.getElementById('obsLinks').innerHTML = obsLinks.map(l => `
+        <div class="obs-row">
+          <span class="obs-label">${l.label}</span>
+          <span class="obs-url" title="${l.url}">${l.url}</span>
+          <button class="obs-copy" onclick="copyObsLink('${l.url}', this)">Copy</button>
+        </div>
+      `).join('');
+    }
+
+    function copyObsLink(url, btn) {
+      navigator.clipboard.writeText(url).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        btn.style.color = '#4ade80';
+        setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+      });
     }
 
     // Helper: prefixes route with /room/:roomId
@@ -459,7 +640,7 @@
       allX: 0, allY: 0, allScale: 100,
       jarWidth: 100, jarHeight: 100, jarX: 0, jarY: 0,
       giftWidth: 100, giftHeight: 100, giftX: 0, giftY: 0,
-      giftSize: 100, giftBounce: 2, giftFriction: 60,
+      giftSize: 100, giftBounce: 2, giftFriction: 60, giftSpacing: 0,
       mouthOpacity: 0, mouthX: 0, mouthY: 0, mouthScale: 100
     };
 
@@ -468,13 +649,13 @@
         allX: 'slAllX', allY: 'slAllY', allScale: 'slAllScale',
         jarWidth: 'slJarWidth', jarHeight: 'slJarHeight', jarX: 'slJarX', jarY: 'slJarY',
         giftWidth: 'slGiftWidth', giftHeight: 'slGiftHeight', giftX: 'slGiftX', giftY: 'slGiftY',
-        giftSize: 'slGiftSize', giftBounce: 'slGiftBounce', giftFriction: 'slGiftFriction',
+        giftSize: 'slGiftSize', giftBounce: 'slGiftBounce', giftFriction: 'slGiftFriction', giftSpacing: 'slGiftSpacing',
         mouthOpacity: 'slMouthOpacity', mouthX: 'slMouthX', mouthY: 'slMouthY', mouthScale: 'slMouthScale'
       };
       return map[control];
     }
 
-    const DIVIDE_BY_100 = new Set(['allScale','jarWidth','jarHeight','giftWidth','giftHeight','giftSize','giftBounce','giftFriction','mouthOpacity','mouthScale']);
+    const DIVIDE_BY_100 = new Set(['allScale','jarWidth','jarHeight','giftWidth','giftHeight','giftSize','giftBounce','giftFriction','giftSpacing','mouthOpacity','mouthScale']);
 
     function normalizeValue(control, rawValue) {
       return DIVIDE_BY_100.has(control) ? rawValue / 100 : rawValue;
@@ -526,6 +707,34 @@
       sliderState.mouthX = 0; sliderState.mouthY = 0; sliderState.mouthScale = 100;
     }
 
+    function exportConfig() {
+      window.location.href = api('/export-config');
+    }
+
+    async function importConfig(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const msg = document.getElementById('configMsg');
+      let cfg;
+      try { cfg = JSON.parse(await file.text()); }
+      catch { msg.style.color='#fca5a5'; msg.textContent='File JSON không hợp lệ.'; return; }
+
+      msg.style.color = '#94a3b8'; msg.textContent = 'Đang nhập...';
+      const res  = await fetch(api('/import-config'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg)
+      });
+      const data = await res.json();
+      if (data.success) {
+        msg.style.color = '#4ade80'; msg.textContent = '✓ Đã nhập config thành công';
+      } else {
+        msg.style.color = '#fca5a5'; msg.textContent = '✗ ' + (data.error || 'Lỗi nhập config');
+      }
+      input.value = '';
+      setTimeout(() => { msg.textContent = ''; }, 3000);
+    }
+
     async function saveConfig() {
       const notice = document.getElementById('saveNotice');
       const res    = await fetch(api('/jar-control/save-config'), { method: 'POST' });
@@ -542,6 +751,13 @@
 
     async function testRain()  { await fetch(api('/jar-control/rain'),  { method: 'POST' }); }
     async function testReset() { await fetch(api('/jar-control/reset'), { method: 'POST' }); }
+    async function dropGift(diamonds, count) {
+      await fetch(api('/jar-control/drop'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ diamonds, count })
+      });
+    }
 
     // ── Sticker controls ──────────────────────────────────────────────────
     function buildStickerControls() {
@@ -627,6 +843,7 @@
       if (state.giftSize    !== undefined) setSliderValue('giftSize',    state.giftSize);
       if (state.giftBounce  !== undefined) setSliderValue('giftBounce',  state.giftBounce);
       if (state.giftFriction !== undefined) setSliderValue('giftFriction', state.giftFriction);
+      if (state.giftSpacing  !== undefined) setSliderValue('giftSpacing',  state.giftSpacing);
       if (state.mouthOpacity !== undefined) setSliderValue('mouthOpacity', state.mouthOpacity);
       if (state.jarImageUrl) document.getElementById('jarImageStatus').textContent = '✓ Đã thêm';
       if (Array.isArray(state.stickers)) {
@@ -647,6 +864,17 @@
       applyTtsState(state);
       applyTranslateState(state);
       applySpeechState(state);
+      // New feature fields
+      if (state.alertMinDiamonds !== undefined) { const el = document.getElementById('inpAlertMin'); if (el) el.value = state.alertMinDiamonds; }
+      if (state.alertFollows     !== undefined) { const el = document.getElementById('chkAlertFollows'); if (el) el.checked = state.alertFollows; }
+      if (state.alertSound       !== undefined) { const el = document.getElementById('chkAlertSound');   if (el) el.checked = state.alertSound; }
+      if (state.autoResetMins    !== undefined) {
+        const el = document.getElementById('inpAutoReset'); if (el) el.value = state.autoResetMins;
+        const st = document.getElementById('autoResetStatus');
+        if (st) st.textContent = state.autoResetMins > 0 ? `✓ Bình sẽ tự reset sau ${state.autoResetMins} phút` : '';
+      }
+      if (Array.isArray(state.commentBlacklist)) { commentBlacklist = state.commentBlacklist; renderBlacklist(); }
+      applyGoalDisplay({ current: state.goalCurrent, target: state.goalTarget, label: state.goalLabel });
     });
 
     // ── TTS controls ──────────────────────────────────────────────────────
@@ -906,6 +1134,167 @@
       el.style.color  = colors[status] || '#94a3b8';
       el.textContent  = text || status;
     });
+
+    // ── Viewer/like count ──────────────────────────────────────────────────
+    socket.on('viewerUpdate', ({ viewers, likes }) => {
+      const vc = document.getElementById('viewerCount');
+      const lc = document.getElementById('likeCount');
+      if (vc) vc.textContent = (viewers || 0).toLocaleString();
+      if (lc) lc.textContent = (likes   || 0).toLocaleString();
+    });
+
+    // ── Alert settings ─────────────────────────────────────────────────────
+    async function saveAlertSettings() {
+      const minDiamonds = Number(document.getElementById('inpAlertMin').value) || 0;
+      const follows     = document.getElementById('chkAlertFollows').checked;
+      const sound       = document.getElementById('chkAlertSound').checked;
+      await fetch(api('/alert/set'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minDiamonds, follows, sound })
+      });
+    }
+
+    // ── Goal ───────────────────────────────────────────────────────────────
+    function applyGoalDisplay({ current, target, label }) {
+      const cur = Number(current || 0);
+      const tgt = Number(target  || 0);
+      const el  = document.getElementById('goalCurrentDisplay');
+      const bar = document.getElementById('goalProgressBar');
+      if (el)  el.textContent  = cur.toLocaleString();
+      if (bar) bar.style.width = (tgt > 0 ? Math.min(100, cur / tgt * 100) : 0) + '%';
+      const inp = document.getElementById('inpGoalTarget');
+      const lbl = document.getElementById('inpGoalLabel');
+      if (inp && inp !== document.activeElement) inp.value = tgt;
+      if (lbl && lbl !== document.activeElement && label) lbl.value = label;
+    }
+
+    socket.on('goalUpdate', applyGoalDisplay);
+
+    async function saveGoal() {
+      const target = Number(document.getElementById('inpGoalTarget').value) || 0;
+      const label  = document.getElementById('inpGoalLabel').value.trim() || 'Mục tiêu hôm nay';
+      await fetch(api('/goal/set'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target, label })
+      });
+    }
+
+    async function resetGoal() {
+      await fetch(api('/goal/reset'), { method: 'POST' });
+    }
+
+    // ── Leaderboard ────────────────────────────────────────────────────────
+    const MEDAL = ['🥇','🥈','🥉'];
+    function renderLeaderboard(list) {
+      const el = document.getElementById('leaderboardTable');
+      if (!el) return;
+      if (!list || !list.length) { el.innerHTML = '<span style="color:#475569">Chưa có dữ liệu...</span>'; return; }
+      el.innerHTML = `<table style="width:100%;border-collapse:collapse">` +
+        list.map((item, i) => `
+          <tr style="border-bottom:1px solid #1e293b">
+            <td style="padding:5px 4px;width:28px;font-size:14px">${i < 3 ? MEDAL[i] : '#' + (i+1)}</td>
+            <td style="padding:5px 4px;font-size:13px;color:#e2e8f0">${escHtml(item.username)}</td>
+            <td style="padding:5px 4px;font-size:13px;color:#fbbf24;text-align:right;white-space:nowrap">💎 ${item.diamonds.toLocaleString()}</td>
+            <td style="padding:5px 4px;font-size:11px;color:#64748b;text-align:right">${item.count} lần</td>
+          </tr>`
+        ).join('') + `</table>`;
+    }
+
+    socket.on('leaderboardUpdate', renderLeaderboard);
+
+    async function resetLeaderboard() {
+      await fetch(api('/leaderboard/reset'), { method: 'POST' });
+    }
+
+    // ── Comment blacklist ──────────────────────────────────────────────────
+    let commentBlacklist = [];
+
+    function renderBlacklist() {
+      const el = document.getElementById('blacklistChips');
+      if (!el) return;
+      el.innerHTML = commentBlacklist.map((w, i) =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;background:#3b1414;border:1px solid #7f1d1d;border-radius:20px;padding:3px 10px;font-size:12px;color:#fca5a5">${escHtml(w)}<span onclick="removeBlackword(${i})" style="cursor:pointer;font-size:14px;line-height:1;margin-left:2px">×</span></span>`
+      ).join('');
+    }
+
+    async function saveBlacklist() {
+      await fetch(api('/comment-filter/set'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blacklist: commentBlacklist })
+      });
+    }
+
+    async function addBlackword() {
+      const inp = document.getElementById('inpBlacklist');
+      const w   = (inp.value || '').trim();
+      if (!w || commentBlacklist.includes(w)) { inp.value = ''; return; }
+      commentBlacklist.push(w); inp.value = '';
+      renderBlacklist();
+      await saveBlacklist();
+    }
+
+    async function removeBlackword(i) {
+      commentBlacklist.splice(i, 1);
+      renderBlacklist();
+      await saveBlacklist();
+    }
+
+    // ── Auto-reset ─────────────────────────────────────────────────────────
+    async function saveAutoReset() {
+      const mins = Math.max(0, Number(document.getElementById('inpAutoReset').value) || 0);
+      await fetch(api('/auto-reset/set'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mins })
+      });
+      const st = document.getElementById('autoResetStatus');
+      if (st) st.textContent = mins > 0 ? `✓ Bình sẽ tự reset sau ${mins} phút` : 'Tắt auto-reset';
+    }
+
+    // ── Gift history ────────────────────────────────────────────────────────
+    async function loadGiftHistory() {
+      const el = document.getElementById('giftHistoryList');
+      if (!el) return;
+      try {
+        const res  = await fetch(api('/gift-history'));
+        const list = await res.json();
+        if (!list.length) { el.innerHTML = '<span style="color:#475569">Chưa có lịch sử...</span>'; return; }
+        el.innerHTML = list.map(item => {
+          const t = new Date(item.time);
+          const ts = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+          return `<div style="padding:5px 0;border-bottom:1px solid #1e293b;display:flex;gap:8px;align-items:center">
+            <span style="color:#475569;min-width:36px">${ts}</span>
+            <span style="color:#e2e8f0;flex:1">${escHtml(item.username)}</span>
+            <span style="color:#a78bfa">${escHtml(item.giftName)}</span>
+            <span style="color:#fbbf24;white-space:nowrap">💎 ${(item.diamonds * item.count).toLocaleString()}</span>
+          </div>`;
+        }).join('');
+      } catch { el.innerHTML = '<span style="color:#ef4444">Lỗi tải lịch sử</span>'; }
+    }
+
+    // ── Change password ─────────────────────────────────────────────────────
+    async function changePassword() {
+      const oldPw  = document.getElementById('inpOldPw').value;
+      const newPw  = document.getElementById('inpNewPw').value;
+      const conf   = document.getElementById('inpConfirmPw').value;
+      const msg    = document.getElementById('changePwMsg');
+      if (!oldPw || !newPw) { msg.style.color='#fca5a5'; msg.textContent='Vui lòng điền đầy đủ thông tin.'; return; }
+      if (newPw !== conf) { msg.style.color='#fca5a5'; msg.textContent='Mật khẩu mới không khớp.'; return; }
+      if (newPw.length < 6) { msg.style.color='#fca5a5'; msg.textContent='Mật khẩu mới tối thiểu 6 ký tự.'; return; }
+      const res  = await fetch('/api/change-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw })
+      });
+      const data = await res.json();
+      if (data.success) {
+        msg.style.color = '#4ade80'; msg.textContent = '✓ Đổi mật khẩu thành công';
+        document.getElementById('inpOldPw').value = '';
+        document.getElementById('inpNewPw').value = '';
+        document.getElementById('inpConfirmPw').value = '';
+      } else {
+        msg.style.color = '#fca5a5'; msg.textContent = '✗ ' + (data.error || 'Đổi thất bại');
+      }
+      setTimeout(() => { msg.textContent = ''; }, 4000);
+    }
 
     buildStickerControls();
   </script>

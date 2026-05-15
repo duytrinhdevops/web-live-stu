@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>TikTok Live — Chọn Config</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #171a23;
+      border-bottom: 1px solid #2b3040;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-title { font-size: 17px; font-weight: 700; color: #a78bfa; }
+    .room-badge {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-family: monospace;
+      color: #7dd3fc;
+    }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .user-chip {
+      font-size: 12px;
+      color: #94a3b8;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 4px 12px;
+    }
+    .btn-logout {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #94a3b8;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-logout:hover { background: #334155; color: #e2e8f0; }
+
+    .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── Status bar ── */
+    .status-bar {
+      background: #171a23;
+      border: 1px solid #2b3040;
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #334155;
+      flex-shrink: 0;
+    }
+    .dot.live { background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .status-text { font-size: 13px; color: #94a3b8; flex: 1; }
+    .status-text b { color: #f1f5f9; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 14px;
+    }
+
+    /* ── Preset grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: #171a23;
+      border: 2px solid #2b3040;
+      border-radius: 14px;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+    }
+    .card:hover { border-color: #7c3aed; background: #1a1d2a; }
+    .card.active {
+      border-color: #22c55e;
+      background: rgba(34,197,94,.06);
+    }
+    .card.active::after {
+      content: '✓';
+      position: absolute;
+      top: 10px; right: 12px;
+      color: #22c55e;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .card-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+    .card-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f1f5f9;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .card-file {
+      font-size: 10px;
+      color: #475569;
+      font-family: monospace;
+    }
+
+    .btn-apply {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 0;
+      background: #7c3aed;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+      width: 100%;
+      margin-top: auto;
+    }
+    .btn-apply:hover:not(:disabled) { background: #6d28d9; }
+    .btn-apply.success { background: #16a34a; }
+    .btn-apply:disabled { opacity: .5; cursor: default; }
+
+    .empty {
+      text-align: center;
+      color: #475569;
+      font-size: 14px;
+      padding: 60px 20px;
+      grid-column: 1/-1;
+      line-height: 1.8;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: #f1f5f9;
+      transition: transform .25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 99;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.ok   { border-color: #22c55e44; color: #4ade80; }
+    #toast.err  { border-color: #ef444444; color: #fca5a5; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <button onclick="goBack()" style="background:#1e293b;border:1px solid #334155;border-radius:6px;color:#94a3b8;padding:5px 12px;font-size:12px;cursor:pointer">← Quay lại</button>
+    <span class="header-title">TikTok Live Studio</span>
+    <span class="room-badge" id="roomBadge">—</span>
+  </div>
+  <div class="header-right">
+    <span class="user-chip" id="userChip">...</span>
+    <form action="/logout" method="post" style="margin:0">
+      <button type="submit" class="btn-logout">Đăng xuất</button>
+    </form>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="status-bar">
+    <span class="dot" id="statusDot"></span>
+    <span class="status-text" id="statusText">Đang tải...</span>
+  </div>
+
+  <div class="section-title">Chọn giao diện</div>
+  <div class="grid" id="grid">
+    <div class="empty">Đang tải danh sách...</div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const roomId = new URLSearchParams(location.search).get('room') || '';
+
+  // ── Auth check ─────────────────────────────────────────────────────────
+  fetch('/api/me').then(r => r.json()).then(d => {
+    if (!d.username) { location.href = '/login'; return; }
+    document.getElementById('userChip').textContent = d.username;
+    // Nếu user có room gắn sẵn mà URL không có room, redirect
+    if (!roomId && d.roomId) { location.href = `/preset.html?room=${d.roomId}`; return; }
+    if (!roomId) { location.href = '/login'; }
+  }).catch(() => { location.href = '/login'; });
+
+  if (roomId) document.getElementById('roomBadge').textContent = roomId;
+
+  // ── Socket — theo dõi trạng thái live ─────────────────────────────────
+  const socket = io({ transports: ['websocket', 'polling'], reconnection: true });
+  socket.on('connect', () => { if (roomId) socket.emit('joinRoom', roomId); });
+
+  socket.on('tiktokStatus', p => {
+    const dot  = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (p.status === 'connected') {
+      dot.className = 'dot live';
+      text.innerHTML = `Live: <b>${p.uniqueId || ''}</b>`;
+    } else if (p.status === 'connecting') {
+      dot.className = 'dot';
+      dot.style.background = '#f59e0b';
+      text.innerHTML = `Đang kết nối: <b>${p.uniqueId || ''}</b>`;
+    } else {
+      dot.className = 'dot';
+      dot.style.background = '';
+      text.innerHTML = 'Chưa kết nối';
+    }
+  });
+
+  socket.on('jarStateInit', state => {
+    if (!state) return;
+    if (state.isConnected && state.tiktokUniqueId) {
+      document.getElementById('statusDot').className = 'dot live';
+      document.getElementById('statusText').innerHTML = `Live: <b>${state.tiktokUniqueId}</b>`;
+    } else {
+      document.getElementById('statusText').innerHTML = 'Chưa kết nối TikTok';
+    }
+  });
+
+  // ── Load presets ────────────────────────────────────────────────────────
+  let currentPreset = null;
+
+  async function loadPresets() {
+    const res  = await fetch('/presets');
+    if (!res.ok) { showToast('Không tải được danh sách preset', 'err'); return; }
+    const list = await res.json();
+    const grid = document.getElementById('grid');
+
+    if (list.length === 0) {
+      grid.innerHTML = `<div class="empty">
+        Chưa có config nào.<br>
+        Admin cần lưu preset từ trang quản trị.
+      </div>`;
+      return;
+    }
+
+    const icons = ['🎨','🌟','💜','🔥','✨','🎭','🌈','💎','👑','🎪'];
+    grid.innerHTML = list.map((p, i) => `
+      <div class="card" id="card_${i}" onclick="selectPreset(${i}, '${esc(p.filename)}', this)">
+        <div class="card-icon">${icons[i % icons.length]}</div>
+        <div>
+          <div class="card-name">${esc(p.label)}</div>
+          <div class="card-file">${esc(p.filename)}</div>
+        </div>
+        <button class="btn-apply" onclick="event.stopPropagation(); applyPreset('${esc(p.filename)}', this)">
+          Áp dụng
+        </button>
+      </div>
+    `).join('');
+  }
+
+  function selectPreset(idx, filename, card) {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    currentPreset = filename;
+  }
+
+  let appliedFilename = null;
+
+  async function applyPreset(filename, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang áp dụng...';
+    try {
+      const res  = await fetch(`/room/${roomId}/apply-preset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Xoá tích cũ ở tất cả card
+        document.querySelectorAll('.card').forEach(c => {
+          c.classList.remove('active');
+          const b = c.querySelector('.btn-apply');
+          if (b) { b.textContent = 'Áp dụng'; b.classList.remove('success'); b.disabled = false; }
+        });
+        // Đánh dấu card hiện tại
+        btn.closest('.card').classList.add('active');
+        btn.textContent = '✓ Đang dùng';
+        btn.classList.add('success');
+        appliedFilename = filename;
+        showToast(`Đã áp dụng: ${filename.replace('.json','')}`, 'ok');
+      } else {
+        btn.textContent = 'Lỗi — thử lại';
+        btn.disabled = false;
+        showToast(data.error || 'Áp dụng thất bại', 'err');
+      }
+    } catch {
+      btn.textContent = 'Lỗi — thử lại';
+      btn.disabled = false;
+      showToast('Lỗi kết nối', 'err');
+    }
+  }
+
+  function goBack() {
+    location.href = `/?room=${roomId}`;
+  }
+
+  // ── Toast ───────────────────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, 2500);
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  if (roomId) loadPresets();
+</script>
+</body>
+</html>

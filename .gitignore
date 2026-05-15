@@ -2,4 +2,6 @@ node_modules/
 ffmpeg/*.exe
 config.json
 configs/
+presets/
+users.json
 .claude/
