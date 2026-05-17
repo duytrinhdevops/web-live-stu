@@ -4,7 +4,8 @@ set -e
 
 DOMAIN="duytrinhstudio.io.vn"
 EMAIL="hctdiy07@gmail.com"
-CERT_DIR="./data/certbot/conf/live/$DOMAIN"
+CERT_SRC="/etc/letsencrypt"
+CERT_DEST="./data/certbot/conf"
 
 # ── Kiểm tra Docker ────────────────────────────────────────────────────────
 if ! command -v docker &>/dev/null; then
@@ -29,37 +30,52 @@ if [ ! -f data/users.json ]; then
   echo "==> Đã tạo users.json với tài khoản admin mặc định (duytrinh / duytrinh@)"
 fi
 
-# ── Hàm viết nginx config ──────────────────────────────────────────────────
+# ── Build app ─────────────────────────────────────────────────────────────
+echo "==> Build Docker image..."
+docker compose build
 
-write_http_only_conf() {
-  cat > nginx/conf.d/app.conf << EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-    location /.well-known/acme-challenge/ { root /var/www/certbot; }
-    location / { return 200 'Initializing SSL...'; add_header Content-Type text/plain; }
-}
-EOF
-}
+# ── Lấy SSL cert nếu chưa có ──────────────────────────────────────────────
+if [ ! -f "$CERT_DEST/live/$DOMAIN/fullchain.pem" ]; then
+  echo "==> Chưa có SSL cert. Đang lấy từ Let's Encrypt..."
 
-write_full_conf() {
-  cat > nginx/conf.d/app.conf << EOF
+  # Đảm bảo không có gì đang chiếm port 80
+  docker compose down --remove-orphans 2>/dev/null || true
+
+  # Cài certbot trên host nếu chưa có
+  if ! command -v certbot &>/dev/null; then
+    echo "==> Cài certbot..."
+    apt update -qq && apt install -y certbot
+  fi
+
+  # Lấy cert bằng standalone (certbot tự listen port 80)
+  certbot certonly --standalone \
+    --email "$EMAIL" --agree-tos --no-eff-email \
+    -d "$DOMAIN"
+
+  # Copy cert vào thư mục data để Docker volume mount được
+  cp -rL "$CERT_SRC/live"    "$CERT_DEST/"
+  cp -rL "$CERT_SRC/archive" "$CERT_DEST/"
+  echo "==> SSL cert đã lấy xong."
+fi
+
+# ── Viết nginx config HTTPS ───────────────────────────────────────────────
+cat > nginx/conf.d/app.conf << EOF
 server {
-    listen 80;
+    listen 80 default_server;
     server_name $DOMAIN;
     location /.well-known/acme-challenge/ { root /var/www/certbot; }
     location / { return 301 https://\$host\$request_uri; }
 }
 
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name $DOMAIN;
 
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
     ssl_session_cache   shared:SSL:10m;
     ssl_session_timeout 10m;
 
@@ -76,32 +92,10 @@ server {
     }
 }
 EOF
-}
 
-# ── Build app image ────────────────────────────────────────────────────────
-echo "==> Build Docker image..."
-docker compose build
-
-# ── Lấy SSL cert lần đầu nếu chưa có ─────────────────────────────────────
-if [ ! -d "$CERT_DIR" ]; then
-  echo "==> Lần đầu chạy: lấy SSL certificate cho $DOMAIN..."
-  write_http_only_conf
-  docker compose down --remove-orphans 2>/dev/null || true
-  docker compose up -d nginx
-  echo "==> Đợi nginx sẵn sàng..."
-  sleep 5
-  docker compose run --rm certbot certonly \
-    --webroot --webroot-path=/var/www/certbot \
-    --email "$EMAIL" --agree-tos --no-eff-email \
-    -d "$DOMAIN"
-  echo "==> SSL cert đã lấy thành công!"
-fi
-
-# ── Viết config đầy đủ và khởi động ──────────────────────────────────────
-write_full_conf
-
+# ── Khởi động tất cả container ────────────────────────────────────────────
 echo "==> Khởi động lại tất cả container..."
-docker compose down --remove-orphans
+docker compose down --remove-orphans 2>/dev/null || true
 docker compose up -d
 
 echo ""
