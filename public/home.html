@@ -195,6 +195,76 @@
     .feat-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
     .feat-desc { font-size: 13px; color: var(--soft); line-height: 1.65; }
 
+    .feat-card--highlight {
+      border-color: rgba(124,58,237,.3);
+      background: linear-gradient(135deg, rgba(124,58,237,.06) 0%, var(--card) 60%);
+    }
+    .feat-card--highlight .feat-title::after {
+      content: ' ✦';
+      font-size: 10px;
+      color: var(--purple2);
+    }
+
+    /* ── WHY US ── */
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .why-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
+    }
+    .why-card:hover { border-color: rgba(124,58,237,.45); transform: translateY(-3px); }
+    .why-icon {
+      font-size: 28px; margin-bottom: 14px; display: block;
+    }
+    .why-title {
+      font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text);
+    }
+    .why-desc {
+      font-size: 13px; color: var(--soft); line-height: 1.65;
+    }
+    .why-badge {
+      display: inline-block; margin-top: 10px;
+      background: rgba(124,58,237,.15); color: var(--violet);
+      border: 1px solid rgba(124,58,237,.3);
+      border-radius: 20px; padding: 3px 10px;
+      font-size: 11px; font-weight: 700;
+    }
+    .price-match-banner {
+      background: linear-gradient(135deg, rgba(124,58,237,.12) 0%, rgba(236,72,153,.08) 100%);
+      border: 1px solid rgba(124,58,237,.3);
+      border-radius: 16px; padding: 28px 32px;
+      display: flex; align-items: center; gap: 24px;
+      flex-wrap: wrap;
+    }
+    .price-match-icon { font-size: 42px; flex-shrink: 0; }
+    .price-match-text { flex: 1; min-width: 200px; }
+    .price-match-title {
+      font-size: 18px; font-weight: 800; margin-bottom: 6px;
+      background: linear-gradient(135deg, #a78bfa, #ec4899);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .price-match-desc { font-size: 13px; color: var(--soft); line-height: 1.6; }
+    .price-match-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, var(--purple), #9333ea);
+      color: #fff; text-decoration: none; border-radius: 8px;
+      padding: 10px 22px; font-size: 13px; font-weight: 700;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 16px rgba(124,58,237,.35);
+      white-space: nowrap;
+    }
+    .price-match-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,58,237,.5); }
+
     /* ── HOW IT WORKS ── */
     .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
     .step {
@@ -303,10 +373,11 @@
   <div class="nav-inner">
     <a href="/" class="nav-logo">
       <div class="nav-logo-icon">🎙️</div>
-      <span class="nav-logo-text">TikTok Live Studio</span>
+      <span class="nav-logo-text">TikTok Live Studio - Duy Trịnh</span>
     </a>
     <div class="nav-right">
       <a href="#features" class="nav-link">Tính năng</a>
+      <a href="#why-us" class="nav-link">Cam kết</a>
       <a href="#contact" class="nav-link">Liên hệ</a>
       <a href="/login" class="btn-login">Đăng nhập</a>
     </div>
@@ -460,6 +531,105 @@
         </div>
       </div>
 
+      <div class="feat-card feat-card--highlight">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#f97316 22%,#fb923c44)">🎭</div>
+        <div class="feat-title">Hiệu ứng quà custom</div>
+        <div class="feat-desc">
+          Tạo hiệu ứng rơi / nổ / bay hoàn toàn theo ý tưởng riêng của bạn.
+          Không bị giới hạn bởi template mặc định — đặt hàng là có.
+        </div>
+      </div>
+
+      <div class="feat-card feat-card--highlight">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#ec489922,#f472b644)">👤</div>
+        <div class="feat-title">Clone khuôn mặt 3D</div>
+        <div class="feat-desc">
+          Quà rơi vào lọ mang khuôn mặt của chính bạn — hiệu ứng 3D độc đáo
+          không streamer nào khác có, tạo dấu ấn thương hiệu cá nhân.
+        </div>
+      </div>
+
+      <div class="feat-card feat-card--highlight">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#06b6d422,#22d3ee44)">🫙</div>
+        <div class="feat-title">Custom bình quà</div>
+        <div class="feat-desc">
+          Thiết kế bình quà theo màu sắc, thương hiệu hoặc nhân vật yêu thích.
+          Upload ảnh bình là hiệu ứng vật lý tự adapt ngay.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- WHY US -->
+<section id="why-us">
+  <div class="container">
+    <div class="section-label">Cam kết</div>
+    <h2 class="section-title">Vì sao chọn chúng tôi?</h2>
+    <p class="section-sub">
+      Không chỉ là công cụ — chúng tôi là đối tác đồng hành cùng buổi live của bạn.
+    </p>
+
+    <div class="why-grid">
+
+      <div class="why-card">
+        <span class="why-icon">💰</span>
+        <div class="why-title">Cam kết giá tốt nhất</div>
+        <div class="why-desc">
+          Bạn tìm được dịch vụ tương tự với giá rẻ hơn? Chúng tôi sẵn sàng
+          thương lượng và hạ giá để bạn không phải đắn đo lựa chọn.
+        </div>
+        <span class="why-badge">Tìm thấp hơn → Báo ngay</span>
+      </div>
+
+      <div class="why-card">
+        <span class="why-icon">👂</span>
+        <div class="why-title">Lắng nghe khách hàng</div>
+        <div class="why-desc">
+          Mọi tính năng trên đây đều đến từ yêu cầu thực tế của streamer.
+          Bạn cần gì — cứ nhắn, chúng tôi sẽ cập nhật vào hệ thống.
+        </div>
+        <span class="why-badge">Yêu cầu → Được làm</span>
+      </div>
+
+      <div class="why-card">
+        <span class="why-icon">🎨</span>
+        <div class="why-title">Custom 100% theo ý bạn</div>
+        <div class="why-desc">
+          Hiệu ứng riêng, sticker riêng, màu sắc riêng — tất cả đều custom
+          được. Không có gì là không làm được nếu bạn mô tả ý tưởng.
+        </div>
+        <span class="why-badge">Đặt hàng là có</span>
+      </div>
+
+      <div class="why-card">
+        <span class="why-icon">🚀</span>
+        <div class="why-title">Cập nhật liên tục</div>
+        <div class="why-desc">
+          Tính năng mới được thêm thường xuyên, không cài đặt lại,
+          không tăng giá — bạn tự động nhận bản cập nhật khi hệ thống deploy.
+        </div>
+        <span class="why-badge">Luôn mới nhất</span>
+      </div>
+
+    </div>
+
+    <div class="price-match-banner">
+      <div class="price-match-icon">🏷️</div>
+      <div class="price-match-text">
+        <div class="price-match-title">Chính sách giá cạnh tranh</div>
+        <div class="price-match-desc">
+          Tìm thấy dịch vụ overlay TikTok Live nào rẻ hơn với tính năng tương đương?
+          Nhắn Zalo kèm link — chúng tôi sẽ xem xét và hạ giá ngay cho bạn.
+          Mục tiêu là bạn hài lòng, không phải thu thật nhiều.
+        </div>
+      </div>
+      <a href="https://zalo.me/0964918976" target="_blank" rel="noopener" class="price-match-btn">
+        💬 Báo giá Zalo
+      </a>
     </div>
   </div>
 </section>
@@ -506,7 +676,7 @@
     <div class="contact-section">
       <div class="section-label">Liên hệ</div>
       <h2 class="contact-title">Cần hỗ trợ? Liên hệ ngay</h2>
-      <p class="contact-sub">Tôi luôn sẵn sàng hỗ trợ — phản hồi nhanh qua Zalo hoặc Facebook.</p>
+      <p class="contact-sub">Phản hồi nhanh qua Zalo hoặc Facebook — tư vấn, báo giá, đặt custom miễn phí.</p>
 
       <div class="contact-cards">
         <a href="https://zalo.me/0964918976" target="_blank" rel="noopener" class="contact-card">
@@ -524,6 +694,15 @@
           </div>
         </a>
       </div>
+
+      <div style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);border-radius:12px;padding:16px 24px;margin-bottom:28px;display:inline-flex;align-items:center;gap:12px;text-align:left;">
+        <span style="font-size:24px;flex-shrink:0">🔑</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--violet);margin-bottom:4px">Cấp tài khoản sử dụng web</div>
+          <div style="font-size:12px;color:var(--soft);line-height:1.6">Vui lòng liên hệ admin qua Zalo hoặc Facebook để được cấp tài khoản và hướng dẫn sử dụng.</div>
+        </div>
+      </div>
+      <br>
 
       <a href="/login" class="btn-cta">
         🚀 Đăng nhập ngay
