@@ -62,9 +62,9 @@
     .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; min-width: 0; }
     .nav-logo-icon {
       width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
-      background: linear-gradient(135deg, var(--purple), var(--pink));
-      display: flex; align-items: center; justify-content: center; font-size: 17px;
+      overflow: hidden;
     }
+    .nav-logo-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .nav-logo-text { font-size: 15px; font-weight: 700; color: var(--violet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .nav-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .nav-links { display: flex; align-items: center; gap: 2px; }
@@ -378,7 +378,7 @@
 <nav>
   <div class="nav-inner">
     <a href="/" class="nav-logo">
-      <div class="nav-logo-icon">🎙️</div>
+      <div class="nav-logo-icon"><img src="/avatar.png" alt="DT-STUDIO" /></div>
       <span class="nav-logo-text">TikTok Live Studio - Duy Trịnh</span>
     </a>
     <div class="nav-right">
@@ -631,7 +631,10 @@
 <hr class="divider" />
 <footer>
   <div class="footer-inner">
-    <span class="footer-logo">🎙️ TikTok Live Studio</span>
+    <span class="footer-logo" style="display:inline-flex;align-items:center;gap:8px;">
+      <img src="/avatar.png" alt="" style="width:22px;height:22px;border-radius:6px;object-fit:cover;">
+      DT-STUDIO
+    </span>
     <span class="footer-copy">© 2025 Duy Trinh. All rights reserved.</span>
     <div class="footer-links">
       <a href="/login">Đăng nhập</a>
