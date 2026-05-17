@@ -34,100 +34,82 @@
       overflow-x: hidden;
     }
 
-    /* ── Orbs background ── */
-    .orbs {
-      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
-    }
-    .orb {
-      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18;
-      animation: drift 18s ease-in-out infinite;
-    }
-    .orb-1 { width: 600px; height: 600px; background: #7c3aed; top: -150px; left: -100px; animation-delay: 0s; }
-    .orb-2 { width: 500px; height: 500px; background: #ec4899; bottom: 10%; right: -100px; animation-delay: -6s; }
-    .orb-3 { width: 400px; height: 400px; background: #06b6d4; top: 40%; left: 30%; animation-delay: -12s; }
+    /* ── Orbs ── */
+    .orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .orb  { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15; animation: drift 18s ease-in-out infinite; }
+    .orb-1 { width: 500px; height: 500px; background: #7c3aed; top: -120px; left: -80px; animation-delay: 0s; }
+    .orb-2 { width: 400px; height: 400px; background: #ec4899; bottom: 10%; right: -80px; animation-delay: -6s; }
+    .orb-3 { width: 350px; height: 350px; background: #06b6d4; top: 40%; left: 30%; animation-delay: -12s; }
     @keyframes drift {
-      0%,100% { transform: translate(0, 0) scale(1); }
-      33%      { transform: translate(40px, -30px) scale(1.05); }
-      66%      { transform: translate(-30px, 20px) scale(0.95); }
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%      { transform: translate(30px,-20px) scale(1.05); }
+      66%      { transform: translate(-20px,15px) scale(0.95); }
     }
 
     /* ── Layout ── */
-    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 1; }
 
     /* ── NAV ── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(11,13,20,.85); backdrop-filter: blur(16px);
+      background: rgba(11,13,20,.9); backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
     }
     .nav-inner {
-      max-width: 1100px; margin: 0 auto; padding: 0 24px;
-      height: 64px; display: flex; align-items: center; justify-content: space-between;
+      max-width: 1100px; margin: 0 auto; padding: 0 20px;
+      height: 60px; display: flex; align-items: center; justify-content: space-between;
     }
-    .nav-logo {
-      display: flex; align-items: center; gap: 10px; text-decoration: none;
-    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; min-width: 0; }
     .nav-logo-icon {
-      width: 36px; height: 36px; border-radius: 10px;
+      width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
       background: linear-gradient(135deg, var(--purple), var(--pink));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
     }
-    .nav-logo-text { font-size: 16px; font-weight: 700; color: var(--violet); }
-    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-logo-text { font-size: 15px; font-weight: 700; color: var(--violet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .nav-links { display: flex; align-items: center; gap: 2px; }
     .nav-link {
-      color: var(--soft); font-size: 13px; text-decoration: none; padding: 6px 12px;
-      border-radius: 6px; transition: color .15s, background .15s;
+      color: var(--soft); font-size: 13px; text-decoration: none; padding: 6px 10px;
+      border-radius: 6px; transition: color .15s, background .15s; white-space: nowrap;
     }
     .nav-link:hover { color: var(--text); background: var(--border); }
     .btn-login {
       background: var(--purple); color: #fff; border: none;
-      padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 700;
-      cursor: pointer; text-decoration: none;
+      padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 700;
+      cursor: pointer; text-decoration: none; white-space: nowrap;
       transition: background .15s, transform .1s, box-shadow .15s;
-      box-shadow: 0 0 0 0 rgba(124,58,237,0);
     }
-    .btn-login:hover {
-      background: var(--purple2); transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(124,58,237,.45);
-    }
+    .btn-login:hover { background: var(--purple2); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(124,58,237,.45); }
 
     /* ── HERO ── */
-    .hero {
-      min-height: 100vh; display: flex; align-items: center;
-      padding: 100px 0 60px;
-    }
-    .hero-inner {
-      text-align: center; max-width: 780px; margin: 0 auto;
-    }
+    .hero { min-height: 100vh; display: flex; align-items: center; padding: 90px 0 60px; }
+    .hero-inner { text-align: center; max-width: 780px; margin: 0 auto; width: 100%; }
     .badge {
       display: inline-flex; align-items: center; gap: 7px;
       background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.35);
-      border-radius: 20px; padding: 6px 14px; font-size: 12px;
-      color: var(--violet); margin-bottom: 28px;
+      border-radius: 20px; padding: 5px 14px; font-size: 12px;
+      color: var(--violet); margin-bottom: 24px;
     }
     .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.5s infinite; }
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
 
     .hero h1 {
-      font-size: clamp(36px, 6vw, 68px);
-      font-weight: 800; line-height: 1.1;
-      letter-spacing: -0.02em;
-      margin-bottom: 22px;
+      font-size: clamp(30px, 6vw, 68px);
+      font-weight: 800; line-height: 1.12;
+      letter-spacing: -0.02em; margin-bottom: 20px;
     }
     .gradient-text {
       background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #06b6d4 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .hero p {
-      font-size: clamp(15px, 2vw, 18px); color: var(--soft); line-height: 1.7;
-      margin-bottom: 36px; max-width: 580px; margin-left: auto; margin-right: auto;
+      font-size: clamp(14px, 2vw, 17px); color: var(--soft); line-height: 1.7;
+      margin-bottom: 32px; max-width: 560px; margin-left: auto; margin-right: auto;
     }
     .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
     .btn-primary {
       background: linear-gradient(135deg, var(--purple), #9333ea);
-      color: #fff; border: none; padding: 14px 32px;
+      color: #fff; border: none; padding: 13px 28px;
       border-radius: 10px; font-size: 15px; font-weight: 700;
       cursor: pointer; text-decoration: none;
       transition: transform .15s, box-shadow .15s;
@@ -137,7 +119,7 @@
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,.55); }
     .btn-outline {
       background: transparent; color: var(--violet);
-      border: 1px solid rgba(124,58,237,.5); padding: 14px 28px;
+      border: 1px solid rgba(124,58,237,.5); padding: 13px 24px;
       border-radius: 10px; font-size: 15px; font-weight: 600;
       cursor: pointer; text-decoration: none;
       transition: background .15s, border-color .15s, transform .15s;
@@ -146,192 +128,167 @@
     .btn-outline:hover { background: rgba(124,58,237,.1); border-color: var(--purple); transform: translateY(-2px); }
 
     .hero-stats {
-      display: flex; gap: 32px; justify-content: center; flex-wrap: wrap;
-      margin-top: 52px; padding-top: 40px;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 16px; margin-top: 48px; padding-top: 36px;
       border-top: 1px solid var(--border);
     }
     .stat { text-align: center; }
-    .stat-num { font-size: 28px; font-weight: 800; color: var(--violet); }
+    .stat-num { font-size: clamp(20px, 4vw, 28px); font-weight: 800; color: var(--violet); }
     .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
-    /* ── SECTION HEADING ── */
-    section { padding: 80px 0; position: relative; z-index: 1; }
+    /* ── SECTION ── */
+    section { padding: 72px 0; position: relative; z-index: 1; }
     .section-label {
       text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--purple2); margin-bottom: 12px;
+      text-transform: uppercase; color: var(--purple2); margin-bottom: 10px;
     }
     .section-title {
-      text-align: center; font-size: clamp(24px, 4vw, 38px);
-      font-weight: 800; margin-bottom: 14px; letter-spacing: -.01em;
+      text-align: center; font-size: clamp(22px, 4vw, 36px);
+      font-weight: 800; margin-bottom: 12px; letter-spacing: -.01em;
     }
     .section-sub {
-      text-align: center; font-size: 15px; color: var(--soft);
-      max-width: 560px; margin: 0 auto 52px; line-height: 1.65;
+      text-align: center; font-size: 14px; color: var(--soft);
+      max-width: 540px; margin: 0 auto 44px; line-height: 1.65;
     }
 
     /* ── FEATURES GRID ── */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
     }
     .feat-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px; padding: 28px 24px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 24px 20px;
       transition: border-color .2s, transform .2s, box-shadow .2s;
       position: relative; overflow: hidden;
     }
     .feat-card::before {
-      content: ''; position: absolute; inset: 0; border-radius: 16px;
+      content: ''; position: absolute; inset: 0; border-radius: 14px;
       background: linear-gradient(135deg, rgba(124,58,237,.06) 0%, transparent 60%);
       opacity: 0; transition: opacity .2s;
     }
-    .feat-card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+    .feat-card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-3px); box-shadow: 0 10px 36px rgba(0,0,0,.3); }
     .feat-card:hover::before { opacity: 1; }
-    .feat-icon {
-      width: 48px; height: 48px; border-radius: 12px; margin-bottom: 18px;
-      display: flex; align-items: center; justify-content: center; font-size: 22px;
-    }
-    .feat-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
-    .feat-desc { font-size: 13px; color: var(--soft); line-height: 1.65; }
-
+    .feat-icon { width: 46px; height: 46px; border-radius: 11px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; font-size: 21px; }
+    .feat-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .feat-desc { font-size: 13px; color: var(--soft); line-height: 1.6; }
     .feat-card--highlight {
       border-color: rgba(124,58,237,.3);
       background: linear-gradient(135deg, rgba(124,58,237,.06) 0%, var(--card) 60%);
     }
-    .feat-card--highlight .feat-title::after {
-      content: ' ✦';
-      font-size: 10px;
-      color: var(--purple2);
-    }
+    .feat-card--highlight .feat-title::after { content: ' ✦'; font-size: 10px; color: var(--purple2); }
 
     /* ── WHY US ── */
     .why-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 16px;
-      margin-bottom: 40px;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 14px; margin-bottom: 32px;
     }
     .why-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px 24px;
-      position: relative;
-      overflow: hidden;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 24px 20px;
       transition: border-color .2s, transform .2s;
     }
     .why-card:hover { border-color: rgba(124,58,237,.45); transform: translateY(-3px); }
-    .why-icon {
-      font-size: 28px; margin-bottom: 14px; display: block;
-    }
-    .why-title {
-      font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text);
-    }
-    .why-desc {
-      font-size: 13px; color: var(--soft); line-height: 1.65;
-    }
+    .why-icon { font-size: 26px; margin-bottom: 12px; display: block; }
+    .why-title { font-size: 14px; font-weight: 700; margin-bottom: 7px; color: var(--text); }
+    .why-desc { font-size: 12px; color: var(--soft); line-height: 1.6; }
     .why-badge {
       display: inline-block; margin-top: 10px;
       background: rgba(124,58,237,.15); color: var(--violet);
       border: 1px solid rgba(124,58,237,.3);
-      border-radius: 20px; padding: 3px 10px;
-      font-size: 11px; font-weight: 700;
+      border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700;
     }
     .price-match-banner {
       background: linear-gradient(135deg, rgba(124,58,237,.12) 0%, rgba(236,72,153,.08) 100%);
       border: 1px solid rgba(124,58,237,.3);
-      border-radius: 16px; padding: 28px 32px;
-      display: flex; align-items: center; gap: 24px;
-      flex-wrap: wrap;
+      border-radius: 14px; padding: 24px 28px;
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
     }
-    .price-match-icon { font-size: 42px; flex-shrink: 0; }
-    .price-match-text { flex: 1; min-width: 200px; }
+    .price-match-icon { font-size: 38px; flex-shrink: 0; }
+    .price-match-text { flex: 1; min-width: 180px; }
     .price-match-title {
-      font-size: 18px; font-weight: 800; margin-bottom: 6px;
+      font-size: 17px; font-weight: 800; margin-bottom: 6px;
       background: linear-gradient(135deg, #a78bfa, #ec4899);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .price-match-desc { font-size: 13px; color: var(--soft); line-height: 1.6; }
     .price-match-btn {
       display: inline-flex; align-items: center; gap: 6px;
       background: linear-gradient(135deg, var(--purple), #9333ea);
       color: #fff; text-decoration: none; border-radius: 8px;
-      padding: 10px 22px; font-size: 13px; font-weight: 700;
+      padding: 10px 20px; font-size: 13px; font-weight: 700;
       transition: transform .15s, box-shadow .15s;
-      box-shadow: 0 4px 16px rgba(124,58,237,.35);
-      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(124,58,237,.35); white-space: nowrap;
     }
     .price-match-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,58,237,.5); }
 
     /* ── HOW IT WORKS ── */
-    .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
     .step {
-      text-align: center; padding: 28px 20px;
-      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      text-align: center; padding: 24px 16px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
     }
     .step-num {
-      width: 44px; height: 44px; border-radius: 50%;
+      width: 42px; height: 42px; border-radius: 50%;
       background: linear-gradient(135deg, var(--purple), #9333ea);
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px; font-weight: 800; margin: 0 auto 16px; color: #fff;
+      font-size: 15px; font-weight: 800; margin: 0 auto 14px; color: #fff;
     }
-    .step-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .step-title { font-size: 14px; font-weight: 700; margin-bottom: 7px; }
     .step-desc { font-size: 12px; color: var(--soft); line-height: 1.6; }
 
     /* ── CONTACT ── */
     .contact-section {
       background: linear-gradient(135deg, rgba(124,58,237,.08) 0%, rgba(236,72,153,.06) 100%);
-      border: 1px solid var(--border2); border-radius: 24px; padding: 52px 40px;
+      border: 1px solid var(--border2); border-radius: 20px; padding: 48px 32px;
       text-align: center;
     }
-    .contact-title { font-size: clamp(22px, 3vw, 32px); font-weight: 800; margin-bottom: 10px; }
-    .contact-sub { font-size: 14px; color: var(--soft); margin-bottom: 36px; }
-    .contact-cards {
-      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px;
-    }
+    .contact-title { font-size: clamp(20px, 3vw, 30px); font-weight: 800; margin-bottom: 10px; }
+    .contact-sub { font-size: 14px; color: var(--soft); margin-bottom: 32px; line-height: 1.6; }
+    .contact-cards { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
     .contact-card {
-      display: flex; align-items: center; gap: 14px;
+      display: flex; align-items: center; gap: 12px;
       background: var(--card); border: 1px solid var(--border2);
-      border-radius: 14px; padding: 18px 24px; text-decoration: none;
+      border-radius: 12px; padding: 16px 20px; text-decoration: none;
       transition: border-color .15s, transform .15s, box-shadow .15s;
-      min-width: 220px;
+      flex: 1; min-width: 180px; max-width: 240px;
     }
     .contact-card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.3); }
     .contact-card-icon {
-      width: 46px; height: 46px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center; font-size: 22px;
-      flex-shrink: 0;
+      width: 44px; height: 44px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
     }
-    .icon-zalo   { background: linear-gradient(135deg, #006af5, #0099ff); }
-    .icon-fb     { background: linear-gradient(135deg, #1877f2, #0a5fd0); }
+    .icon-zalo { background: linear-gradient(135deg, #006af5, #0099ff); }
+    .icon-fb   { background: linear-gradient(135deg, #1877f2, #0a5fd0); }
     .contact-card-info { text-align: left; }
     .contact-card-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 3px; }
     .contact-card-value { font-size: 14px; font-weight: 700; color: var(--text); }
+    .account-notice {
+      display: inline-flex; align-items: center; gap: 12px; text-align: left;
+      background: rgba(124,58,237,.1); border: 1px solid rgba(124,58,237,.3);
+      border-radius: 12px; padding: 14px 20px; margin-bottom: 24px;
+      max-width: 480px; width: 100%;
+    }
+    .account-notice-icon { font-size: 22px; flex-shrink: 0; }
+    .account-notice-title { font-size: 13px; font-weight: 700; color: var(--violet); margin-bottom: 3px; }
+    .account-notice-desc { font-size: 12px; color: var(--soft); line-height: 1.55; }
     .btn-cta {
       display: inline-flex; align-items: center; gap: 8px;
       background: linear-gradient(135deg, var(--purple), #9333ea);
       color: #fff; text-decoration: none; border-radius: 10px;
-      padding: 14px 36px; font-size: 15px; font-weight: 700;
+      padding: 13px 32px; font-size: 15px; font-weight: 700;
       transition: transform .15s, box-shadow .15s;
       box-shadow: 0 4px 20px rgba(124,58,237,.4);
     }
     .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,.55); }
 
-    /* ── DIVIDER ── */
+    /* ── DIVIDER / FOOTER ── */
     .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
-
-    /* ── FOOTER ── */
-    footer {
-      position: relative; z-index: 1;
-      padding: 28px 24px; text-align: center;
-    }
+    footer { position: relative; z-index: 1; padding: 24px 20px; }
     .footer-inner {
       max-width: 1100px; margin: 0 auto;
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 12px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
     }
     .footer-logo { font-size: 14px; font-weight: 700; color: var(--violet); }
     .footer-copy { font-size: 12px; color: var(--muted); }
@@ -339,30 +296,78 @@
     .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; transition: color .15s; }
     .footer-links a:hover { color: var(--soft); }
 
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: #2a3050; border-radius: 3px; }
 
-    /* ── RESPONSIVE ── */
-    @media (max-width: 640px) {
-      .hero { padding: 90px 0 40px; }
-      .hero-stats { gap: 20px; }
-      .contact-section { padding: 36px 20px; }
-      .contact-card { min-width: 160px; }
-      .features-grid { grid-template-columns: 1fr; }
-      .steps { grid-template-columns: 1fr 1fr; }
-      .footer-inner { flex-direction: column; text-align: center; }
-      .nav-logo-text { display: none; }
+    /* ════════════════════════════════
+       RESPONSIVE
+    ════════════════════════════════ */
+
+    /* Tablet ≤ 1024px */
+    @media (max-width: 1024px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .why-grid      { grid-template-columns: repeat(2, 1fr); }
+      .steps         { grid-template-columns: repeat(2, 1fr); }
     }
-    @media (max-width: 400px) {
-      .steps { grid-template-columns: 1fr; }
+
+    /* Tablet nhỏ ≤ 768px */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hero { padding: 80px 0 48px; }
+      .hero-stats { grid-template-columns: repeat(2, 1fr); gap: 12px; padding-top: 28px; margin-top: 36px; }
+      section { padding: 56px 0; }
+      .section-sub { margin-bottom: 32px; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .contact-section { padding: 36px 20px; }
+      .contact-card { max-width: 100%; }
+      .price-match-banner { padding: 20px; }
+    }
+
+    /* Mobile ≤ 480px */
+    @media (max-width: 480px) {
+      .container { padding: 0 16px; }
+      .nav-inner { padding: 0 16px; }
+      .nav-logo-text { display: none; }
+      .hero { padding: 76px 0 40px; min-height: auto; }
+      .hero h1 { font-size: clamp(26px, 8vw, 36px); }
+      .hero p { font-size: 14px; }
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .hero-actions .btn-primary,
+      .hero-actions .btn-outline { justify-content: center; padding: 13px 20px; }
+      .hero-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 28px; padding-top: 24px; }
+      .stat-label { font-size: 11px; }
+      section { padding: 44px 0; }
+      .section-title { font-size: clamp(20px, 6vw, 26px); }
+      .section-sub { font-size: 13px; margin-bottom: 24px; }
+      .features-grid { grid-template-columns: 1fr; gap: 10px; }
+      .why-grid { grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
+      .steps { grid-template-columns: 1fr; gap: 10px; }
+      .step { padding: 20px 16px; }
+      .price-match-banner { flex-direction: column; align-items: flex-start; gap: 14px; padding: 18px; }
+      .price-match-btn { width: 100%; justify-content: center; }
+      .contact-section { padding: 28px 16px; border-radius: 14px; }
+      .contact-cards { flex-direction: column; align-items: stretch; }
+      .contact-card { max-width: 100%; min-width: 0; }
+      .account-notice { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .btn-cta { width: 100%; justify-content: center; padding: 13px 20px; }
+      .footer-inner { flex-direction: column; text-align: center; gap: 8px; }
+      .footer-links { justify-content: center; }
+      .orb-1 { width: 280px; height: 280px; }
+      .orb-2 { width: 240px; height: 240px; }
+      .orb-3 { width: 200px; height: 200px; }
+    }
+
+    /* Mobile rất nhỏ ≤ 360px */
+    @media (max-width: 360px) {
+      .hero h1 { font-size: 24px; }
+      .feat-card { padding: 18px 14px; }
+      .why-card  { padding: 18px 14px; }
     }
   </style>
 </head>
 <body>
 
-<!-- Background orbs -->
 <div class="orbs">
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
@@ -377,9 +382,11 @@
       <span class="nav-logo-text">TikTok Live Studio - Duy Trịnh</span>
     </a>
     <div class="nav-right">
-      <a href="#features" class="nav-link">Tính năng</a>
-      <a href="#why-us" class="nav-link">Cam kết</a>
-      <a href="#contact" class="nav-link">Liên hệ</a>
+      <div class="nav-links">
+        <a href="#features" class="nav-link">Tính năng</a>
+        <a href="#why-us"   class="nav-link">Cam kết</a>
+        <a href="#contact"  class="nav-link">Liên hệ</a>
+      </div>
       <a href="/login" class="btn-login">Đăng nhập</a>
     </div>
   </div>
@@ -389,31 +396,22 @@
 <section class="hero">
   <div class="container">
     <div class="hero-inner">
-
       <div class="badge">
         <span class="badge-dot"></span>
         Hệ thống đang hoạt động
       </div>
-
       <h1>
         Studio chuyên nghiệp<br>
         cho <span class="gradient-text">TikTok Live</span>
       </h1>
-
       <p>
         Nâng tầm buổi livestream với hiệu ứng quà tặng 3D, bảng xếp hạng real-time,
         mục tiêu tích lũy diamond và hàng loạt overlay đẹp mắt — tất cả chạy trực tiếp trên OBS.
       </p>
-
       <div class="hero-actions">
-        <a href="/login" class="btn-primary">
-          🚀 Bắt đầu ngay
-        </a>
-        <a href="#features" class="btn-outline">
-          ✨ Xem tính năng
-        </a>
+        <a href="/login" class="btn-primary">🚀 Bắt đầu ngay</a>
+        <a href="#features" class="btn-outline">✨ Xem tính năng</a>
       </div>
-
       <div class="hero-stats">
         <div class="stat">
           <div class="stat-num">3D</div>
@@ -432,7 +430,6 @@
           <div class="stat-label">Luôn hoạt động</div>
         </div>
       </div>
-
     </div>
   </div>
 </section>
@@ -448,117 +445,67 @@
       Từ hiệu ứng quà 3D đến overlay comment, mọi tính năng được thiết kế
       để tăng tương tác và giữ chân khán giả.
     </p>
-
     <div class="features-grid">
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#7c3aed22,#7c3aed44)">🫙</div>
         <div class="feat-title">Lọ quà 3D Physics</div>
-        <div class="feat-desc">
-          Quà tặng của người xem rơi vào lọ với hiệu ứng vật lý chân thực.
-          Scale tự động theo giá trị diamond, âm thanh theo từng mức.
-        </div>
+        <div class="feat-desc">Quà tặng rơi vào lọ với vật lý chân thực. Scale theo diamond, âm thanh theo từng mức.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#ec489922,#ec489944)">🏆</div>
         <div class="feat-title">Bảng xếp hạng</div>
-        <div class="feat-desc">
-          Top 10 người tặng quà nhiều nhất trong buổi live, cập nhật real-time
-          với huy hiệu vàng–bạc–đồng, hiện thị đẹp trên OBS.
-        </div>
+        <div class="feat-desc">Top 10 người tặng quà, cập nhật real-time với huy hiệu vàng–bạc–đồng đẹp trên OBS.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#22c55e22,#22c55e44)">🎯</div>
         <div class="feat-title">Thanh mục tiêu</div>
-        <div class="feat-desc">
-          Đặt mục tiêu diamond cho buổi live, thanh tiến độ tự fill khi nhận quà.
-          Đổi màu xanh khi đạt 100%, tạo động lực cho người xem.
-        </div>
+        <div class="feat-desc">Đặt mục tiêu diamond, thanh tiến độ tự fill khi nhận quà. Đổi màu xanh khi đạt 100%.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#f59e0b22,#f59e0b44)">🔔</div>
         <div class="feat-title">Alert popup</div>
-        <div class="feat-desc">
-          Popup nổi bật khi nhận quà lớn hoặc có người follow mới.
-          Tuỳ chỉnh ngưỡng diamond, âm thanh báo động, tự ẩn sau 4 giây.
-        </div>
+        <div class="feat-desc">Popup nổi bật khi nhận quà lớn hoặc follow mới. Tuỳ chỉnh ngưỡng, âm thanh, tự ẩn.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#06b6d422,#06b6d444)">💬</div>
         <div class="feat-title">Overlay comment</div>
-        <div class="feat-desc">
-          Hiển thị comment từ TikTok Live lên màn hình OBS theo thời gian thực.
-          Bộ lọc từ khoá, điều chỉnh font size, ẩn/hiện linh hoạt.
-        </div>
+        <div class="feat-desc">Hiển thị comment TikTok Live lên OBS real-time. Bộ lọc từ khoá, điều chỉnh font size.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#a78bfa22,#a78bfa44)">🎨</div>
         <div class="feat-title">Preset giao diện</div>
-        <div class="feat-desc">
-          Lưu và load nhiều bộ cấu hình khác nhau. Chuyển đổi giao diện
-          trong vài giây mà không cần cấu hình lại từ đầu.
-        </div>
+        <div class="feat-desc">Lưu và load nhiều bộ cấu hình. Chuyển đổi giao diện trong vài giây không cần cài lại.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#ef444422,#ef444444)">🌐</div>
         <div class="feat-title">Dịch comment</div>
-        <div class="feat-desc">
-          Tự động dịch comment của khán giả sang ngôn ngữ khác,
-          hiển thị song song bản gốc và bản dịch trên OBS overlay.
-        </div>
+        <div class="feat-desc">Tự động dịch comment sang ngôn ngữ khác, hiển thị bản gốc và bản dịch song song.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#84cc1622,#84cc1644)">🔊</div>
         <div class="feat-title">Đọc comment (TTS)</div>
-        <div class="feat-desc">
-          Tính năng Chị Google đọc to comment trực tiếp trên tab quản lý.
-          Hỗ trợ tiếng Việt, điều chỉnh tốc độ và âm lượng.
-        </div>
+        <div class="feat-desc">Chị Google đọc to comment trực tiếp. Hỗ trợ tiếng Việt, điều chỉnh tốc độ và âm lượng.</div>
       </div>
-
       <div class="feat-card">
         <div class="feat-icon" style="background:linear-gradient(135deg,#0ea5e922,#0ea5e944)">📊</div>
         <div class="feat-title">Thống kê real-time</div>
-        <div class="feat-desc">
-          Theo dõi lượt xem, lượt tim, lịch sử quà tặng và tổng diamond
-          nhận được trong toàn bộ buổi live chỉ trong một màn hình.
-        </div>
+        <div class="feat-desc">Theo dõi lượt xem, tim, lịch sử quà và tổng diamond nhận trong toàn bộ buổi live.</div>
       </div>
-
       <div class="feat-card feat-card--highlight">
-        <div class="feat-icon" style="background:linear-gradient(135deg,#f97316 22%,#fb923c44)">🎭</div>
+        <div class="feat-icon" style="background:linear-gradient(135deg,#f9731622,#fb923c44)">🎭</div>
         <div class="feat-title">Hiệu ứng quà custom</div>
-        <div class="feat-desc">
-          Tạo hiệu ứng rơi / nổ / bay hoàn toàn theo ý tưởng riêng của bạn.
-          Không bị giới hạn bởi template mặc định — đặt hàng là có.
-        </div>
+        <div class="feat-desc">Tạo hiệu ứng rơi / nổ / bay theo ý tưởng riêng. Không giới hạn template — đặt hàng là có.</div>
       </div>
-
       <div class="feat-card feat-card--highlight">
         <div class="feat-icon" style="background:linear-gradient(135deg,#ec489922,#f472b644)">👤</div>
         <div class="feat-title">Clone khuôn mặt 3D</div>
-        <div class="feat-desc">
-          Quà rơi vào lọ mang khuôn mặt của chính bạn — hiệu ứng 3D độc đáo
-          không streamer nào khác có, tạo dấu ấn thương hiệu cá nhân.
-        </div>
+        <div class="feat-desc">Quà rơi mang khuôn mặt của bạn — hiệu ứng 3D độc đáo tạo dấu ấn thương hiệu cá nhân.</div>
       </div>
-
       <div class="feat-card feat-card--highlight">
         <div class="feat-icon" style="background:linear-gradient(135deg,#06b6d422,#22d3ee44)">🫙</div>
         <div class="feat-title">Custom bình quà</div>
-        <div class="feat-desc">
-          Thiết kế bình quà theo màu sắc, thương hiệu hoặc nhân vật yêu thích.
-          Upload ảnh bình là hiệu ứng vật lý tự adapt ngay.
-        </div>
+        <div class="feat-desc">Thiết kế bình theo màu sắc, thương hiệu hoặc nhân vật. Upload ảnh là vật lý tự adapt.</div>
       </div>
-
     </div>
   </div>
 </section>
@@ -570,67 +517,43 @@
   <div class="container">
     <div class="section-label">Cam kết</div>
     <h2 class="section-title">Vì sao chọn chúng tôi?</h2>
-    <p class="section-sub">
-      Không chỉ là công cụ — chúng tôi là đối tác đồng hành cùng buổi live của bạn.
-    </p>
-
+    <p class="section-sub">Không chỉ là công cụ — chúng tôi là đối tác đồng hành cùng buổi live của bạn.</p>
     <div class="why-grid">
-
       <div class="why-card">
         <span class="why-icon">💰</span>
         <div class="why-title">Cam kết giá tốt nhất</div>
-        <div class="why-desc">
-          Bạn tìm được dịch vụ tương tự với giá rẻ hơn? Chúng tôi sẵn sàng
-          thương lượng và hạ giá để bạn không phải đắn đo lựa chọn.
-        </div>
+        <div class="why-desc">Tìm được dịch vụ tương tự giá rẻ hơn? Chúng tôi sẵn sàng thương lượng và hạ giá ngay.</div>
         <span class="why-badge">Tìm thấp hơn → Báo ngay</span>
       </div>
-
       <div class="why-card">
         <span class="why-icon">👂</span>
         <div class="why-title">Lắng nghe khách hàng</div>
-        <div class="why-desc">
-          Mọi tính năng trên đây đều đến từ yêu cầu thực tế của streamer.
-          Bạn cần gì — cứ nhắn, chúng tôi sẽ cập nhật vào hệ thống.
-        </div>
+        <div class="why-desc">Mọi tính năng đều từ yêu cầu thực tế của streamer. Bạn cần gì — cứ nhắn, chúng tôi làm.</div>
         <span class="why-badge">Yêu cầu → Được làm</span>
       </div>
-
       <div class="why-card">
         <span class="why-icon">🎨</span>
         <div class="why-title">Custom 100% theo ý bạn</div>
-        <div class="why-desc">
-          Hiệu ứng riêng, sticker riêng, màu sắc riêng — tất cả đều custom
-          được. Không có gì là không làm được nếu bạn mô tả ý tưởng.
-        </div>
+        <div class="why-desc">Hiệu ứng riêng, sticker riêng, màu sắc riêng — không có gì không làm được.</div>
         <span class="why-badge">Đặt hàng là có</span>
       </div>
-
       <div class="why-card">
         <span class="why-icon">🚀</span>
         <div class="why-title">Cập nhật liên tục</div>
-        <div class="why-desc">
-          Tính năng mới được thêm thường xuyên, không cài đặt lại,
-          không tăng giá — bạn tự động nhận bản cập nhật khi hệ thống deploy.
-        </div>
+        <div class="why-desc">Tính năng mới thêm thường xuyên, không cài lại, không tăng giá — tự động nhận bản mới.</div>
         <span class="why-badge">Luôn mới nhất</span>
       </div>
-
     </div>
-
     <div class="price-match-banner">
       <div class="price-match-icon">🏷️</div>
       <div class="price-match-text">
         <div class="price-match-title">Chính sách giá cạnh tranh</div>
         <div class="price-match-desc">
           Tìm thấy dịch vụ overlay TikTok Live nào rẻ hơn với tính năng tương đương?
-          Nhắn Zalo kèm link — chúng tôi sẽ xem xét và hạ giá ngay cho bạn.
-          Mục tiêu là bạn hài lòng, không phải thu thật nhiều.
+          Nhắn Zalo kèm link — chúng tôi sẽ xem xét và hạ giá ngay. Mục tiêu là bạn hài lòng.
         </div>
       </div>
-      <a href="https://zalo.me/0964918976" target="_blank" rel="noopener" class="price-match-btn">
-        💬 Báo giá Zalo
-      </a>
+      <a href="https://zalo.me/0964918976" target="_blank" rel="noopener" class="price-match-btn">💬 Báo giá Zalo</a>
     </div>
   </div>
 </section>
@@ -641,9 +564,8 @@
 <section id="how">
   <div class="container">
     <div class="section-label">Cách sử dụng</div>
-    <h2 class="section-title">Bắt đầu trong 3 bước</h2>
+    <h2 class="section-title">Bắt đầu trong 4 bước</h2>
     <p class="section-sub">Không cần cài đặt phức tạp — chỉ cần trình duyệt và OBS.</p>
-
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
@@ -678,7 +600,6 @@
       <div class="section-label">Liên hệ</div>
       <h2 class="contact-title">Cần hỗ trợ? Liên hệ ngay</h2>
       <p class="contact-sub">Phản hồi nhanh qua Zalo hoặc Facebook — tư vấn, báo giá, đặt custom miễn phí.</p>
-
       <div class="contact-cards">
         <a href="https://zalo.me/0964918976" target="_blank" rel="noopener" class="contact-card">
           <div class="contact-card-icon icon-zalo">💬</div>
@@ -695,24 +616,18 @@
           </div>
         </a>
       </div>
-
-      <div style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);border-radius:12px;padding:16px 24px;margin-bottom:28px;display:inline-flex;align-items:center;gap:12px;text-align:left;">
-        <span style="font-size:24px;flex-shrink:0">🔑</span>
+      <div class="account-notice">
+        <span class="account-notice-icon">🔑</span>
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--violet);margin-bottom:4px">Cấp tài khoản sử dụng web</div>
-          <div style="font-size:12px;color:var(--soft);line-height:1.6">Vui lòng liên hệ admin qua Zalo hoặc Facebook để được cấp tài khoản và hướng dẫn sử dụng.</div>
+          <div class="account-notice-title">Cấp tài khoản sử dụng web</div>
+          <div class="account-notice-desc">Vui lòng liên hệ admin qua Zalo hoặc Facebook để được cấp tài khoản và hướng dẫn sử dụng.</div>
         </div>
       </div>
-      <br>
-
-      <a href="/login" class="btn-cta">
-        🚀 Đăng nhập ngay
-      </a>
+      <a href="/login" class="btn-cta">🚀 Đăng nhập ngay</a>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
 <hr class="divider" />
 <footer>
   <div class="footer-inner">
@@ -727,23 +642,19 @@
 </footer>
 
 <script>
-  // Smooth scroll cho nav links
   document.querySelectorAll('a[href^="#"]').forEach(a => {
     a.addEventListener('click', e => {
-      const id = a.getAttribute('href').slice(1);
-      const el = document.getElementById(id);
+      const el = document.getElementById(a.getAttribute('href').slice(1));
       if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
   });
 
-  // Nếu đã đăng nhập, đổi nút "Đăng nhập" → "Vào ứng dụng"
   fetch('/api/me').then(r => r.json()).then(d => {
     if (!d.username) return;
     const target = d.role === 'admin' ? '/admin' : `/?room=${d.roomId}`;
     document.querySelectorAll('a[href="/login"]').forEach(el => {
-      el.href    = target;
-      el.textContent = el.classList.contains('btn-cta')
-        ? '🚀 Vào ứng dụng' : 'Vào ứng dụng';
+      el.href = target;
+      el.textContent = el.classList.contains('btn-cta') ? '🚀 Vào ứng dụng' : 'Vào ứng dụng';
     });
   }).catch(() => {});
 </script>
