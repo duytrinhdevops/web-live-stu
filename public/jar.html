@@ -71,6 +71,7 @@
     const giftCache=new Map();
     // Pre-render each gift image at exact draw size so drawImage never scales at runtime
     const _spriteCache = new Map();
+    const _SPRITE_MAX  = 200;
     function getSprite(im, R){
       const key = im.src + '_' + R;
       if(_spriteCache.has(key)) return _spriteCache.get(key);
@@ -81,6 +82,7 @@
       ox.imageSmoothingEnabled = true;
       ox.imageSmoothingQuality = 'medium';
       ox.drawImage(im, 0, 0, R*2, R*2);
+      if(_spriteCache.size >= _SPRITE_MAX) _spriteCache.delete(_spriteCache.keys().next().value);
       _spriteCache.set(key, oc);
       return oc;
     }
@@ -269,12 +271,18 @@
     // ── Gift queue ────────────────────────────────────────────────────────
     const giftQueue = [];
     const DRAIN_MS  = 130;
+    let _drainTimer = null;
 
-    setInterval(() => {
-      if (giftQueue.length === 0) return;
-      const item = giftQueue.shift();
-      spawnGiftCore(item.imgSrc, item.diamonds);
-    }, DRAIN_MS);
+    function startDrain(){
+      if(_drainTimer !== null) return;
+      _drainTimer = setTimeout(function tick(){
+        _drainTimer = null;
+        if(giftQueue.length === 0) return;
+        const item = giftQueue.shift();
+        spawnGiftCore(item.imgSrc, item.diamonds);
+        if(giftQueue.length > 0){ _drainTimer = setTimeout(tick, DRAIN_MS); }
+      }, DRAIN_MS);
+    }
 
     const MAX_GIFTS = 80;
     function pruneGifts(){
@@ -601,6 +609,7 @@
       const imgSrc   = data.imgPath || GIFTS[Math.floor(Math.random() * GIFTS.length)];
       const diamonds = Number(data.diamonds || 0);
       giftQueue.push({ imgSrc, diamonds });
+      startDrain();
       playGiftSound(diamonds);
     });
 
@@ -769,6 +778,7 @@
         const d = testDiamonds[Math.floor(Math.random() * testDiamonds.length)];
         giftQueue.push({ imgSrc: GIFTS[Math.floor(Math.random()*GIFTS.length)], diamonds: d });
       }
+      startDrain();
     };
 
     window.jarReset = function(){

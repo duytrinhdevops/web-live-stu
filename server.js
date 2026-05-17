@@ -194,17 +194,24 @@ function getRt(roomId) {
   return roomRuntime.get(roomId);
 }
 
+const _lbEmitTimers = new Map();
 function addToLeaderboard(roomId, username, diamonds) {
   const rt = getRt(roomId);
   const cur = rt.leaderboard.get(username) || { diamonds: 0, count: 0 };
   cur.diamonds += diamonds;
   cur.count++;
   rt.leaderboard.set(username, cur);
-  const top = [...rt.leaderboard.entries()]
-    .sort((a, b) => b[1].diamonds - a[1].diamonds)
-    .slice(0, 10)
-    .map(([name, d]) => ({ username: name, diamonds: d.diamonds, count: d.count }));
-  io.to(roomId).emit("leaderboardUpdate", top);
+
+  if (_lbEmitTimers.has(roomId)) return; // already scheduled
+  _lbEmitTimers.set(roomId, setTimeout(() => {
+    _lbEmitTimers.delete(roomId);
+    const rt2 = getRt(roomId);
+    const top = [...rt2.leaderboard.entries()]
+      .sort((a, b) => b[1].diamonds - a[1].diamonds)
+      .slice(0, 10)
+      .map(([name, d]) => ({ username: name, diamonds: d.diamonds, count: d.count }));
+    io.to(roomId).emit("leaderboardUpdate", top);
+  }, 500));
 }
 
 function addGiftHistory(roomId, entry) {
@@ -269,6 +276,20 @@ function saveRoomConfig(roomId) {
   const room = getRoom(roomId);
   if (!room) return;
   fs.writeFileSync(getRoomConfigPath(roomId), JSON.stringify(room.state, null, 2), "utf8");
+}
+
+// Async debounced version for hot-path callers (effect-set, etc.)
+const _configSaveTimers = new Map();
+function scheduleSaveConfig(roomId, delay = 800) {
+  if (_configSaveTimers.has(roomId)) clearTimeout(_configSaveTimers.get(roomId));
+  _configSaveTimers.set(roomId, setTimeout(() => {
+    _configSaveTimers.delete(roomId);
+    const room = getRoom(roomId);
+    if (!room) return;
+    fs.writeFile(getRoomConfigPath(roomId), JSON.stringify(room.state, null, 2), "utf8", err => {
+      if (err) console.error(`[room:${roomId}] Save config error:`, err.message);
+    });
+  }, delay));
 }
 
 // Load rooms from existing config files on startup
@@ -746,7 +767,7 @@ app.post("/room/:roomId/jar-control/effect-set", (req, res) => {
     });
   }
 
-  saveRoomConfig(roomId);
+  scheduleSaveConfig(roomId);
   res.json({ success: true });
 });
 
