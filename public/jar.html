@@ -69,6 +69,21 @@
     const gift={width:1,height:1,x:0,y:0,size:1,bounce:0.02,friction:0.6,spacing:0};
     const gifts=[];
     const giftCache=new Map();
+    // Pre-render each gift image at exact draw size so drawImage never scales at runtime
+    const _spriteCache = new Map();
+    function getSprite(im, R){
+      const key = im.src + '_' + R;
+      if(_spriteCache.has(key)) return _spriteCache.get(key);
+      const oc = (typeof OffscreenCanvas !== 'undefined')
+        ? new OffscreenCanvas(R*2, R*2)
+        : (() => { const c=document.createElement('canvas'); c.width=R*2; c.height=R*2; return c; })();
+      const ox = oc.getContext('2d');
+      ox.imageSmoothingEnabled = true;
+      ox.imageSmoothingQuality = 'medium';
+      ox.drawImage(im, 0, 0, R*2, R*2);
+      _spriteCache.set(key, oc);
+      return oc;
+    }
     const stickers=[
       {img:null,width:1,height:1,x:0,y:0},
       {img:null,width:1,height:1,x:0,y:0},
@@ -78,31 +93,28 @@
     ];
 
     const canvas = document.getElementById('c');
-    const ctx    = canvas.getContext('2d');
+    const ctx    = canvas.getContext('2d', { alpha: true });
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = 'medium';
 
-    let dpr = 1;
+    // Force DPR=1 — OBS Browser Source doesn't need retina scaling,
+    // and DPR=2 would quadruple the pixel count for no visible gain.
+    const dpr = 1;
     function resize(){
-      dpr = window.devicePixelRatio || 1;
       const s = Math.min(innerWidth/VW, innerHeight/VH);
-      canvas.width  = VW * dpr;
-      canvas.height = VH * dpr;
+      canvas.width  = VW;
+      canvas.height = VH;
       canvas.style.width  = (VW * s) + 'px';
       canvas.style.height = (VH * s) + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // Re-apply after setTransform (resets state on some browsers)
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
     }
     resize();
     addEventListener('resize', resize);
 
     // ── Physics engine ────────────────────────────────────────────────────
     const engine = Engine.create({ gravity: { x:0, y:1.0 } });
-    engine.positionIterations  = 12;  // reduced from 20 — still smooth, lighter
-    engine.velocityIterations  = 8;   // reduced from 16
-    engine.constraintIterations = 3;
+    engine.positionIterations  = 6;
+    engine.velocityIterations  = 4;
+    engine.constraintIterations = 2;
     const world = engine.world;
 
     const WO = {
@@ -264,12 +276,18 @@
       spawnGiftCore(item.imgSrc, item.diamonds);
     }, DRAIN_MS);
 
+    const MAX_GIFTS = 80;
     function pruneGifts(){
       for(let i = gifts.length-1; i >= 0; i--){
         if(gifts[i].body.position.y > VH + 100){
           World.remove(world, gifts[i].body);
           gifts.splice(i, 1);
         }
+      }
+      // Remove oldest gifts when over cap to keep physics budget stable
+      while(gifts.length > MAX_GIFTS){
+        World.remove(world, gifts[0].body);
+        gifts.shift();
       }
     }
 
@@ -339,26 +357,24 @@
     // Quà đang rơi từ trên (chưa vào bình)
     function drawGiftsFalling(){
       const g = giftGeom();
+      let drew = false;
       for(const gft of gifts){
         const p = gft.body.position;
         if(p.y >= g.yTop) continue;
         const im = giftCache.get(gft.img); if(!im) continue;
-        const R = gft.r || GIFT_R;
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(gft.body.angle);
-        ctx.drawImage(im, -R, -R, R*2, R*2);
-        ctx.restore();
+        const R   = gft.r || GIFT_R;
+        const cos = Math.cos(gft.body.angle), sin = Math.sin(gft.body.angle);
+        ctx.setTransform(cos, sin, -sin, cos, p.x, p.y);
+        ctx.drawImage(getSprite(im, R), -R, -R);
+        drew = true;
       }
+      if(drew) ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
-    // Quà trong bình — dùng ONE clip cho TẤT CẢ quà bên trong (tối ưu từ N clip→1 clip)
+    // Quà trong bình — ONE clip cho tất cả quà bên trong
     function drawGiftsInside(){
       const g = giftGeom();
-
-      // Tách quà: bên trong bình vs tràn ra ngoài
-      const inJar    = [];
-      const overflow = [];
+      const inJar = [], overflow = [];
       for(const gft of gifts){
         const p  = gft.body.position;
         if(p.y < g.yTop) continue;
@@ -367,35 +383,31 @@
         else overflow.push(gft);
       }
 
-      // Vẽ quà trong bình: 1 lần save/clip/restore cho tất cả
       if(inJar.length > 0){
         ctx.save();
         clipJarInnerPath();
         ctx.clip();
         for(const gft of inJar){
-          const p  = gft.body.position;
-          const im = giftCache.get(gft.img);
-          const R  = gft.r || GIFT_R;
-          ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.rotate(gft.body.angle);
-          ctx.drawImage(im, -R, -R, R*2, R*2);
-          ctx.restore();
+          const p   = gft.body.position;
+          const im  = giftCache.get(gft.img);
+          const R   = gft.r || GIFT_R;
+          const cos = Math.cos(gft.body.angle), sin = Math.sin(gft.body.angle);
+          ctx.setTransform(cos, sin, -sin, cos, p.x, p.y);
+          ctx.drawImage(getSprite(im, R), -R, -R);
         }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.restore();
       }
 
-      // Vẽ quà tràn ra ngoài không cần clip
       for(const gft of overflow){
-        const p  = gft.body.position;
-        const im = giftCache.get(gft.img);
-        const R  = gft.r || GIFT_R;
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(gft.body.angle);
-        ctx.drawImage(im, -R, -R, R*2, R*2);
-        ctx.restore();
+        const p   = gft.body.position;
+        const im  = giftCache.get(gft.img);
+        const R   = gft.r || GIFT_R;
+        const cos = Math.cos(gft.body.angle), sin = Math.sin(gft.body.angle);
+        ctx.setTransform(cos, sin, -sin, cos, p.x, p.y);
+        ctx.drawImage(getSprite(im, R), -R, -R);
       }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     function drawMouthEllipseBack(){
@@ -457,7 +469,8 @@
       const dt    = _lastTs ? Math.min(ts - _lastTs, 50) : TARGET_DT;
       _lastTs = ts;
 
-      // Invalidate geometry cache at the start of each frame
+      // Reset transform + invalidate geometry cache each frame
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       _giftGeomCache = null;
       _jarGeomCache  = null;
 
