@@ -448,23 +448,30 @@
     }
 
     // ── Render loop ───────────────────────────────────────────────────────
-    const SUBSTEPS = 3;
-    const SUB_DT   = 1000 / 60 / SUBSTEPS;
+    const SUBSTEPS  = 2;
+    const TARGET_DT = 1000 / 60; // 16.67ms target
+    let   _lastTs   = 0;
 
-    function loop(){
+    function loop(ts){
+      // Delta time capped at 50ms to prevent spiral-of-death on frame drops
+      const dt    = _lastTs ? Math.min(ts - _lastTs, 50) : TARGET_DT;
+      _lastTs = ts;
+
       // Invalidate geometry cache at the start of each frame
       _giftGeomCache = null;
       _jarGeomCache  = null;
 
-      for(let i = 0; i < SUBSTEPS; i++) Engine.update(engine, SUB_DT);
+      // Step physics by actual elapsed time — stays real-speed at any FPS
+      const stepDt = dt / SUBSTEPS;
+      for(let i = 0; i < SUBSTEPS; i++) Engine.update(engine, stepDt);
       pruneGifts();
       ctx.clearRect(0, 0, VW, VH);
 
-      drawMouthEllipseBack();   // hố đen miệng (ẩn khi mouthOpacity=0)
-      drawJarRaw();             // ảnh lọ
-      drawGiftsInside();        // quà trong lọ (clipped — 1 clip cho tất cả)
-      drawGiftsFalling();       // quà đang rơi từ trên
-      drawMouthEllipseFront();  // viền trước miệng (ẩn khi mouthOpacity=0)
+      drawMouthEllipseBack();
+      drawJarRaw();
+      drawGiftsInside();
+      drawGiftsFalling();
+      drawMouthEllipseFront();
       drawStickers();
 
       requestAnimationFrame(loop);
@@ -476,7 +483,7 @@
 
     loadAll().then(() => {
       document.getElementById('loading').style.display = 'none';
-      loop();
+      requestAnimationFrame(loop);
     }).catch(err => {
       document.getElementById('loading').textContent =
         err.message + ' | Hãy đặt đúng file jar-default.png cùng thư mục jar.html';
