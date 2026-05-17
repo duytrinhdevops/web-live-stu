@@ -9,19 +9,16 @@
     html,body{width:100%;height:100%;overflow:hidden;background:transparent}
     #wrap{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
     canvas{display:block}
-
     #loading{
       position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
       font:700 14px Segoe UI,sans-serif;color:#fff;
       background:rgba(0,0,0,.75);padding:10px 14px;border-radius:10px;z-index:20
     }
-
   </style>
 </head>
 <body>
   <div id="loading">Đang tải ảnh lọ...</div>
   <div id="wrap"><canvas id="c"></canvas></div>
-
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -30,24 +27,22 @@
 
     // ====== CONFIG ======
     const JAR_SRC = 'jar-default.png';
-
     const VW=1080, VH=1920;
 
     // Kích thước & vị trí ảnh lọ
     const BASE_W=360, BASE_H=560;
     const BASE_X=VW*0.72, BASE_Y=VH*0.67;
 
-    // Tỉ lệ lòng lọ — miệng rộng (bình nắp vặn wide-mouth)
+    // Tỉ lệ lòng lọ
     const INNER = {
-      topYRatio:          0.05,   // miệng kính (bên trong vòng ren nắp)
-      shoulderYRatio:     0.22,   // dưới nắp, thân bình bắt đầu
-      bottomYRatio:       0.91,   // đáy trong
-      widthRatioTop:      0.62,   // half miệng / BASE_W (miệng rộng)
-      widthRatioShoulder: 0.70,   // half vai (thân rộng nhất)
-      widthRatioBottom:   0.67    // half đáy (hơi thon)
+      topYRatio:          0.05,
+      shoulderYRatio:     0.22,
+      bottomYRatio:       0.91,
+      widthRatioTop:      0.62,
+      widthRatioShoulder: 0.70,
+      widthRatioBottom:   0.67
     };
 
-    // Overlay vẽ (không ảnh hưởng physics)
     const FRONT = {
       mouthYRatio:  0.05,
       mouthHRatio:  0.04,
@@ -56,17 +51,11 @@
       bottomHRatio: 0.06
     };
 
-    // Scale tổng — nhân lên toàn bộ kích thước, giữ nguyên vị trí
     let allScale = 1.0;
-
-    // Vòng miệng bình — không restore từ server, luôn bắt đầu ở default
     let mouthOpacity = 0;
     let mouthX = 0, mouthY = 0, mouthScale = 1.0;
 
-    // Kích thước quà — nhỏ để nhét nhiều, pack chặt
     const GIFT_R = 18;
-
-    // Collision category: quà va tường VÀ va nhau → xếp chồng tự nhiên, tràn bình
     const CAT_WALL = 0x0001;
     const CAT_GIFT = 0x0002;
 
@@ -76,10 +65,8 @@
       'gifts/nuochoa.webp','gifts/tiktok.webp','gifts/timcam.webp','gifts/vuongmieng.webp'
     ];
 
-    // jar: vị trí/scale ảnh vẽ (có thể chỉnh qua server)
     const jar={width:1,height:1,x:0,y:0,img:null,walls:[]};
     const gift={width:1,height:1,x:0,y:0,size:1,bounce:0.02,friction:0.6,spacing:0};
-    // physicsBox LUÔN đồng bộ với jar (không tách riêng nữa)
     const gifts=[];
     const giftCache=new Map();
     const stickers=[
@@ -90,57 +77,67 @@
       {img:null,width:1,height:1,x:0,y:0}
     ];
 
-    const canvas=document.getElementById('c');
-    const ctx=canvas.getContext('2d');
+    const canvas = document.getElementById('c');
+    const ctx    = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
-    let dpr=1;
+    let dpr = 1;
     function resize(){
-      dpr=window.devicePixelRatio||1;
-      const s=Math.min(innerWidth/VW, innerHeight/VH);
-      canvas.width=VW*dpr; canvas.height=VH*dpr;
-      canvas.style.width=(VW*s)+'px'; canvas.style.height=(VH*s)+'px';
-      ctx.setTransform(dpr,0,0,dpr,0,0);
+      dpr = window.devicePixelRatio || 1;
+      const s = Math.min(innerWidth/VW, innerHeight/VH);
+      canvas.width  = VW * dpr;
+      canvas.height = VH * dpr;
+      canvas.style.width  = (VW * s) + 'px';
+      canvas.style.height = (VH * s) + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Re-apply after setTransform (resets state on some browsers)
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
     }
-    resize(); addEventListener('resize',resize);
+    resize();
+    addEventListener('resize', resize);
 
-    const engine=Engine.create({gravity:{x:0,y:1.0}});
-    engine.positionIterations = 20;
-    engine.velocityIterations = 16;
-    engine.constraintIterations = 4;
-    const world=engine.world;
-    // Walls: collidesWith CAT_GIFT (và CAT_WALL để tường va tường không sao)
-    const WO={isStatic:true, friction:0.4, restitution:0.05, frictionStatic:0.5,
-              collisionFilter:{category: CAT_WALL, mask: CAT_GIFT}};
+    // ── Physics engine ────────────────────────────────────────────────────
+    const engine = Engine.create({ gravity: { x:0, y:1.0 } });
+    engine.positionIterations  = 12;  // reduced from 20 — still smooth, lighter
+    engine.velocityIterations  = 8;   // reduced from 16
+    engine.constraintIterations = 3;
+    const world = engine.world;
 
-    // Tường ngoài (phòng khi quà tràn ra)
-    World.add(world,[
-      Bodies.rectangle(VW/2, VH+40, VW*4, 80, WO),
-      Bodies.rectangle(-40,  VH/2,  80,   VH*4, WO),
-      Bodies.rectangle(VW+40,VH/2,  80,   VH*4, WO),
+    const WO = {
+      isStatic: true, friction: 0.4, restitution: 0.05, frictionStatic: 0.5,
+      collisionFilter: { category: CAT_WALL, mask: CAT_GIFT }
+    };
+
+    World.add(world, [
+      Bodies.rectangle(VW/2,  VH+40, VW*4, 80,   WO),
+      Bodies.rectangle(-40,   VH/2,  80,   VH*4, WO),
+      Bodies.rectangle(VW+40, VH/2,  80,   VH*4, WO),
     ]);
 
-    // ── Tính toán hình học bình (dựa vào jar transform) ──────────────────
-    function jarGeom(){
-      const w = BASE_W * jar.width * allScale;
-      const h = BASE_H * jar.height * allScale;
-      const cx = BASE_X + jar.x;
-      const cy = BASE_Y + jar.y;
+    // ── Geometry cache (per-frame) ────────────────────────────────────────
+    // Recomputed once per frame, invalidated whenever jar/gift transforms change
+    let _giftGeomCache = null;
+    let _jarGeomCache  = null;
 
-      const yTop      = cy - h/2 + h * INNER.topYRatio;
-      const yShoulder = cy - h/2 + h * INNER.shoulderYRatio;
-      const yBot      = cy - h/2 + h * INNER.bottomYRatio;
-
-      const halfTop      = w * INNER.widthRatioTop      / 2;
-      const halfShoulder = w * INNER.widthRatioShoulder / 2;
-      const halfBot      = w * INNER.widthRatioBottom   / 2;
-
-      return { cx, cy, w, h, yTop, yShoulder, yBot, halfTop, halfShoulder, halfBot };
+    function invalidateGeomCache(){
+      _giftGeomCache = null;
+      _jarGeomCache  = null;
     }
 
-    // Hình học vùng vật lý quà (physics box) — độc lập với visual jar
-    // gift.width/height: scale vùng chứa quà; gift.x/y: offset vị trí vùng chứa
+    function jarGeom(){
+      if (_jarGeomCache) return _jarGeomCache;
+      const w  = BASE_W * jar.width  * allScale;
+      const h  = BASE_H * jar.height * allScale;
+      const cx = BASE_X + jar.x;
+      const cy = BASE_Y + jar.y;
+      return (_jarGeomCache = { cx, cy, w, h });
+    }
+
     function giftGeom(){
-      const w  = BASE_W * gift.width * allScale;
+      if (_giftGeomCache) return _giftGeomCache;
+      const w  = BASE_W * gift.width  * allScale;
       const h  = BASE_H * gift.height * allScale;
       const cx = BASE_X + gift.x;
       const cy = BASE_Y + gift.y;
@@ -153,10 +150,9 @@
       const halfShoulder = w * INNER.widthRatioShoulder / 2;
       const halfBot      = w * INNER.widthRatioBottom   / 2;
 
-      return { cx, cy, w, h, yTop, yShoulder, yBot, halfTop, halfShoulder, halfBot };
+      return (_giftGeomCache = { cx, cy, w, h, yTop, yShoulder, yBot, halfTop, halfShoulder, halfBot });
     }
 
-    // Điểm spawn = miệng vùng vật lý
     function mouthCenter(){
       const g = giftGeom();
       return { cx: g.cx, y: g.yTop, halfW: g.halfTop };
@@ -168,7 +164,6 @@
       jar.walls = [];
     }
 
-    // Tạo 1 đoạn tường nghiêng từ (x1,y1)→(x2,y2)
     function wallSegment(x1,y1,x2,y2,thickness){
       const angle = Math.atan2(y2-y1, x2-x1);
       const len   = Math.hypot(x2-x1, y2-y1);
@@ -178,15 +173,13 @@
     }
 
     function buildJarWalls(){
+      invalidateGeomCache();
       clearJarWalls();
-      const g = giftGeom(); // physics walls theo gift transform
-      const T = 24; // đủ dày để tránh tunneling
+      const g = giftGeom();
+      const T = 24;
       const walls = [];
 
-      // Lấy profile bình: array các điểm [x_half, y] từ top→bottom (bên trái)
-      // Mô tả shape: cổ thẳng → vai phình ra → thân → hơi thon đáy
       const profilePoints = [
-        // [half_width từ center, y ratio]
         [INNER.widthRatioTop,       INNER.topYRatio],
         [INNER.widthRatioTop,       INNER.topYRatio + (INNER.shoulderYRatio - INNER.topYRatio)*0.3],
         [INNER.widthRatioShoulder,  INNER.shoulderYRatio],
@@ -194,20 +187,17 @@
         [INNER.widthRatioBottom,    INNER.bottomYRatio],
       ];
 
-      // Convert sang tọa độ pixel
       const pts = profilePoints.map(([wr, yr]) => ({
         xL: g.cx - g.w * wr / 2,
         xR: g.cx + g.w * wr / 2,
         y:  g.cy - g.h/2 + g.h * yr
       }));
 
-      // Xây tường từng đoạn
       for(let i=0;i<pts.length-1;i++){
-        walls.push(wallSegment(pts[i].xL, pts[i].y, pts[i+1].xL, pts[i+1].y, T)); // trái
-        walls.push(wallSegment(pts[i].xR, pts[i].y, pts[i+1].xR, pts[i+1].y, T)); // phải
+        walls.push(wallSegment(pts[i].xL, pts[i].y, pts[i+1].xL, pts[i+1].y, T));
+        walls.push(wallSegment(pts[i].xR, pts[i].y, pts[i+1].xR, pts[i+1].y, T));
       }
 
-      // Đáy ngang
       const bot = pts[pts.length-1];
       walls.push(Bodies.rectangle(g.cx, bot.y + T/2, (bot.xR-bot.xL) + T*2, T, WO));
 
@@ -215,69 +205,58 @@
       World.add(world, walls);
     }
 
-    // Tính bán kính tối đa vừa khớp bình (dựa theo vai bình)
     function maxGiftRadius(){
-      const g = giftGeom();
-      // Cap theo miệng bình (halfTop) thay vì vai bình
-      // → quà luôn lọt qua miệng, không bị mắc kẹt
-      return Math.floor(g.halfTop * 0.68);
+      return Math.floor(giftGeom().halfTop * 0.68);
     }
 
-    // Scale radius theo diamond count (log2), nhưng không vượt maxGiftRadius
     function diamondRadius(diamonds){
       const base = Math.max(8, Math.round(GIFT_R * gift.size));
       if (!diamonds || diamonds <= 1) return base;
-      const factor = 1 + 0.30 * Math.log2(diamonds); // 5d→1.70x  50d→2.26x  500d→2.82x
+      const factor = 1 + 0.30 * Math.log2(diamonds);
       return Math.min(maxGiftRadius(), Math.round(base * factor));
     }
 
-    // ── Spawn quà rơi từ TRÊN MÀN HÌNH xuống ────────────────────────────
+    // ── Spawn ─────────────────────────────────────────────────────────────
     function spawnGiftCore(imgSrc, diamonds){
       const m = mouthCenter();
       const r = diamondRadius(diamonds || 0);
-      // physR nhỏ hơn r khi spacing > 0 → quà đè lên nhau về mặt visual
       const physR = Math.max(4, Math.round(r * (1 - gift.spacing * 0.9)));
-      // X giới hạn chặt trong miệng bình để rơi đúng vào
       const x = m.cx + (Math.random()*2-1) * m.halfW * 0.45;
       const y = -r * 2;
 
       const body = Bodies.circle(x, y, physR, {
-        friction:       gift.friction,
-        frictionAir:    0.05,
-        frictionStatic: gift.friction * 0.8,
-        restitution:    gift.bounce,
-        density:        0.004,
+        friction:        gift.friction,
+        frictionAir:     0.05,
+        frictionStatic:  gift.friction * 0.8,
+        restitution:     gift.bounce,
+        density:         0.004,
         collisionFilter: { category: CAT_GIFT, mask: CAT_WALL | CAT_GIFT }
       });
-      Body.setVelocity(body, {
-        x: (Math.random()-0.5) * 0.3,  // ít lệch ngang → rơi thẳng vào bình
-        y: 2.5 + Math.random() * 0.8
-      });
+      Body.setVelocity(body, { x: (Math.random()-0.5)*0.3, y: 2.5 + Math.random()*0.8 });
       Body.setAngularVelocity(body, (Math.random()-0.5)*0.06);
       World.add(world, body);
       gifts.push({ body, img: imgSrc, r });
 
       if(imgSrc && !giftCache.has(imgSrc)){
-        const im=new Image();
-        im.crossOrigin='anonymous';
-        im.onload=()=>giftCache.set(imgSrc,im);
-        im.onerror=()=>{
-          const fallbackSrc=GIFTS[Math.floor(Math.random()*GIFTS.length)];
-          const fb=giftCache.get(fallbackSrc);
-          if(fb) giftCache.set(imgSrc,fb);
+        const im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload  = () => giftCache.set(imgSrc, im);
+        im.onerror = () => {
+          const fb = GIFTS[Math.floor(Math.random() * GIFTS.length)];
+          const cached = giftCache.get(fb);
+          if(cached) giftCache.set(imgSrc, cached);
         };
-        im.src=imgSrc;
+        im.src = imgSrc;
       }
     }
 
     function spawnGift(){
-      const src = GIFTS[Math.floor(Math.random()*GIFTS.length)];
-      spawnGiftCore(src, 0);
+      spawnGiftCore(GIFTS[Math.floor(Math.random()*GIFTS.length)], 0);
     }
 
-    // Hàng đợi quà — rơi theo dòng thay vì đổ đống cùng lúc
+    // ── Gift queue ────────────────────────────────────────────────────────
     const giftQueue = [];
-    const DRAIN_MS = 130; // ms giữa mỗi quà (130ms ≈ 7-8 quà/giây)
+    const DRAIN_MS  = 130;
 
     setInterval(() => {
       if (giftQueue.length === 0) return;
@@ -285,41 +264,43 @@
       spawnGiftCore(item.imgSrc, item.diamonds);
     }, DRAIN_MS);
 
-    // Dọn quà đã ra ngoài màn hình (tràn xuống đáy)
     function pruneGifts(){
-      for(let i=gifts.length-1;i>=0;i--){
+      for(let i = gifts.length-1; i >= 0; i--){
         if(gifts[i].body.position.y > VH + 100){
           World.remove(world, gifts[i].body);
-          gifts.splice(i,1);
+          gifts.splice(i, 1);
         }
       }
     }
 
+    // ── Image loading ─────────────────────────────────────────────────────
     function loadAll(){
       return Promise.all([
-        new Promise((res,rej)=>{
-          const im=new Image();
-          im.onload=()=>{jar.img=im;res();};
-          im.onerror=()=>rej(new Error('Không load được jar-default.png'));
-          im.src=JAR_SRC;
+        new Promise((res, rej) => {
+          const im = new Image();
+          im.onload  = () => { jar.img = im; res(); };
+          im.onerror = () => rej(new Error('Không load được jar-default.png'));
+          im.src = JAR_SRC;
         }),
-        ...GIFTS.map(src=>new Promise(r=>{
-          const im=new Image();
-          im.onload=()=>{giftCache.set(src,im);r();};
-          im.onerror=()=>r();
-          im.src=src;
+        ...GIFTS.map(src => new Promise(r => {
+          const im = new Image();
+          im.onload  = () => { giftCache.set(src, im); r(); };
+          im.onerror = () => r();
+          im.src = src;
         }))
       ]);
     }
 
+    // ── Draw helpers ──────────────────────────────────────────────────────
     function drawJarRaw(){
       const g = jarGeom();
       if(!jar.img) return;
       ctx.drawImage(jar.img, g.cx - g.w/2, g.cy - g.h/2, g.w, g.h);
     }
 
+    // Build clip path that matches the inside of the jar
     function clipJarInnerPath(){
-      const g = giftGeom(); // clip theo vùng vật lý
+      const g = giftGeom();
       const profilePoints = [
         [INNER.widthRatioTop,       INNER.topYRatio],
         [INNER.widthRatioTop,       INNER.topYRatio + (INNER.shoulderYRatio - INNER.topYRatio)*0.3],
@@ -334,32 +315,28 @@
       }));
 
       ctx.beginPath();
-      // trái top→bottom
-      pts.forEach((p,i)=>{ i===0 ? ctx.moveTo(p.xL,p.y) : ctx.lineTo(p.xL,p.y); });
-      // phải bottom→top
-      for(let i=pts.length-1;i>=0;i--) ctx.lineTo(pts[i].xR, pts[i].y);
+      pts.forEach((p,i) => { i===0 ? ctx.moveTo(p.xL, p.y) : ctx.lineTo(p.xL, p.y); });
+      for(let i = pts.length-1; i >= 0; i--) ctx.lineTo(pts[i].xR, pts[i].y);
       ctx.closePath();
     }
 
     function isInsideJar(px, py){
       const g = giftGeom();
       if(py < g.yTop - GIFT_R || py > g.yBot + GIFT_R) return false;
-      // Nội suy half-width tại py
       let half;
       if(py <= g.yShoulder){
-        const t = Math.max(0,(py - g.yTop)/(g.yShoulder - g.yTop));
-        // top→shoulder: widthRatioTop→widthRatioShoulder
-        const wr = INNER.widthRatioTop + (INNER.widthRatioShoulder - INNER.widthRatioTop)*t;
+        const t  = Math.max(0, (py - g.yTop) / (g.yShoulder - g.yTop));
+        const wr = INNER.widthRatioTop + (INNER.widthRatioShoulder - INNER.widthRatioTop) * t;
         half = g.w * wr / 2;
       } else {
-        const t = Math.min(1,(py - g.yShoulder)/(g.yBot - g.yShoulder));
-        const wr = INNER.widthRatioShoulder + (INNER.widthRatioBottom - INNER.widthRatioShoulder)*t;
+        const t  = Math.min(1, (py - g.yShoulder) / (g.yBot - g.yShoulder));
+        const wr = INNER.widthRatioShoulder + (INNER.widthRatioBottom - INNER.widthRatioShoulder) * t;
         half = g.w * wr / 2;
       }
       return Math.abs(px - g.cx) < half + GIFT_R * 0.5;
     }
 
-    // Vẽ quà đang rơi từ trên xuống (chưa vào bình)
+    // Quà đang rơi từ trên (chưa vào bình)
     function drawGiftsFalling(){
       const g = giftGeom();
       for(const gft of gifts){
@@ -375,17 +352,45 @@
       }
     }
 
-    // Vẽ quà đã vào trong bình (clipped theo hình lọ)
+    // Quà trong bình — dùng ONE clip cho TẤT CẢ quà bên trong (tối ưu từ N clip→1 clip)
     function drawGiftsInside(){
       const g = giftGeom();
+
+      // Tách quà: bên trong bình vs tràn ra ngoài
+      const inJar    = [];
+      const overflow = [];
       for(const gft of gifts){
-        const p = gft.body.position;
+        const p  = gft.body.position;
         if(p.y < g.yTop) continue;
         const im = giftCache.get(gft.img); if(!im) continue;
-        const R = gft.r || GIFT_R;
-        const inside = isInsideJar(p.x, p.y);
+        if(isInsideJar(p.x, p.y)) inJar.push(gft);
+        else overflow.push(gft);
+      }
+
+      // Vẽ quà trong bình: 1 lần save/clip/restore cho tất cả
+      if(inJar.length > 0){
         ctx.save();
-        if(inside){ clipJarInnerPath(); ctx.clip(); }
+        clipJarInnerPath();
+        ctx.clip();
+        for(const gft of inJar){
+          const p  = gft.body.position;
+          const im = giftCache.get(gft.img);
+          const R  = gft.r || GIFT_R;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(gft.body.angle);
+          ctx.drawImage(im, -R, -R, R*2, R*2);
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      // Vẽ quà tràn ra ngoài không cần clip
+      for(const gft of overflow){
+        const p  = gft.body.position;
+        const im = giftCache.get(gft.img);
+        const R  = gft.r || GIFT_R;
+        ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(gft.body.angle);
         ctx.drawImage(im, -R, -R, R*2, R*2);
@@ -393,10 +398,9 @@
       }
     }
 
-    // Phần sau của miệng bình (vẽ TRƯỚC ảnh lọ → tạo chiều sâu)
     function drawMouthEllipseBack(){
       if(mouthOpacity <= 0) return;
-      const g = giftGeom();
+      const g  = giftGeom();
       const cx = g.cx + mouthX;
       const cy = g.yTop + mouthY;
       const rx = g.halfTop * mouthScale;
@@ -410,15 +414,14 @@
       ctx.beginPath();
       ctx.ellipse(cx, cy, rx, ry, 0, Math.PI, Math.PI*2);
       ctx.strokeStyle = `rgba(160,200,255,${(0.40*mo).toFixed(2)})`;
-      ctx.lineWidth = Math.max(2, g.w*0.009);
+      ctx.lineWidth   = Math.max(2, g.w*0.009);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Phần trước của miệng bình (vẽ SAU quà → che quà đang rơi vào → hiệu ứng 3D)
     function drawMouthEllipseFront(){
       if(mouthOpacity <= 0) return;
-      const g = giftGeom();
+      const g  = giftGeom();
       const cx = g.cx + mouthX;
       const cy = g.yTop + mouthY;
       const rx = g.halfTop * mouthScale;
@@ -428,7 +431,7 @@
       ctx.beginPath();
       ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI);
       ctx.strokeStyle = `rgba(255,255,255,${(0.88*mo).toFixed(2)})`;
-      ctx.lineWidth = Math.max(4, g.w*0.018);
+      ctx.lineWidth   = Math.max(4, g.w*0.018);
       ctx.stroke();
       ctx.restore();
     }
@@ -436,75 +439,30 @@
     function drawStickers(){
       for(const s of stickers){
         if(!s.img) continue;
-        const w = BASE_W * s.width * allScale;
-        const h = BASE_H * s.height * allScale;
+        const w  = BASE_W * s.width  * allScale;
+        const h  = BASE_H * s.height * allScale;
         const cx = BASE_X + s.x;
         const cy = BASE_Y + s.y;
         ctx.drawImage(s.img, cx - w/2, cy - h/2, w, h);
       }
     }
 
-    // tách lớp ảnh: back nhìn xuyên qua + front che quà
-    function drawJarFrontOverlay(){
-      const g = jarGeom();
-      const x = g.cx - g.w/2, y = g.cy - g.h/2;
-
-      const mouthY  = y + g.h * FRONT.mouthYRatio;
-      const mouthH  = g.h * FRONT.mouthHRatio;
-      const mouthRx = g.w * FRONT.mouthWRatio;
-      const mouthRy = mouthH * 0.5;
-
-      // nửa sau miệng (mờ)
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(g.cx, mouthY + mouthRy, mouthRx, mouthRy, 0, Math.PI, Math.PI*2);
-      ctx.lineWidth = Math.max(8, g.w*0.02);
-      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-      ctx.stroke();
-      ctx.restore();
-
-      // nửa trước miệng (đè lên quà)
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(g.cx, mouthY + mouthRy, mouthRx, mouthRy, 0, 0, Math.PI);
-      ctx.lineWidth = Math.max(11, g.w*0.03);
-      ctx.strokeStyle = 'rgba(255,255,255,0.40)';
-      ctx.stroke();
-      ctx.restore();
-
-      // viền trước đáy
-      const by = y + g.h * FRONT.bottomYRatio;
-      const bh = g.h * FRONT.bottomHRatio;
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(g.cx, by + bh*0.5, g.w*0.30, bh*0.5, 0, 0, Math.PI);
-      ctx.lineWidth = Math.max(8, g.w*0.022);
-      ctx.strokeStyle = 'rgba(255,255,255,0.30)';
-      ctx.stroke();
-      ctx.restore();
-
-      // highlight dọc mặt trước
-      ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      const hh = g.h * 0.62;
-      const yy = y + g.h * 0.26;
-      const ww = Math.max(8, g.w*0.022);
-      ctx.fillRect(x + g.w*0.14, yy, ww, hh);
-      ctx.fillRect(x + g.w*0.82, yy, ww*0.7, hh);
-      ctx.restore();
-    }
-
+    // ── Render loop ───────────────────────────────────────────────────────
     const SUBSTEPS = 3;
-    const SUB_DT = 1000 / 60 / SUBSTEPS;
+    const SUB_DT   = 1000 / 60 / SUBSTEPS;
 
     function loop(){
+      // Invalidate geometry cache at the start of each frame
+      _giftGeomCache = null;
+      _jarGeomCache  = null;
+
       for(let i = 0; i < SUBSTEPS; i++) Engine.update(engine, SUB_DT);
       pruneGifts();
-      ctx.clearRect(0,0,VW,VH);
+      ctx.clearRect(0, 0, VW, VH);
 
       drawMouthEllipseBack();   // hố đen miệng (ẩn khi mouthOpacity=0)
       drawJarRaw();             // ảnh lọ
-      drawGiftsInside();        // quà trong lọ (clipped)
+      drawGiftsInside();        // quà trong lọ (clipped — 1 clip cho tất cả)
       drawGiftsFalling();       // quà đang rơi từ trên
       drawMouthEllipseFront();  // viền trước miệng (ẩn khi mouthOpacity=0)
       drawStickers();
@@ -516,20 +474,21 @@
 
     buildJarWalls();
 
-    loadAll().then(()=>{
-      document.getElementById('loading').style.display='none';
+    loadAll().then(() => {
+      document.getElementById('loading').style.display = 'none';
       loop();
-    }).catch(err=>{
-      document.getElementById('loading').textContent = err.message + ' | Hãy đặt đúng file jar-default.png cùng thư mục jar.html';
+    }).catch(err => {
+      document.getElementById('loading').textContent =
+        err.message + ' | Hãy đặt đúng file jar-default.png cùng thư mục jar.html';
       console.error(err);
     });
 
-    // Socket.io integration for TikTok live gifts
+    // ── Socket.IO ─────────────────────────────────────────────────────────
     const roomId = new URLSearchParams(location.search).get('room') || '';
     const socket = io({
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
+      transports:          ['websocket', 'polling'],
+      reconnection:        true,
+      reconnectionDelay:   1000,
       reconnectionAttempts: 10
     });
 
@@ -537,41 +496,69 @@
       if (roomId) socket.emit('joinRoom', roomId);
     });
 
-    // Sound tiers: silent (0-4), soft (5-49), medium (50-499), big (500+)
+    // ── Audio ─────────────────────────────────────────────────────────────
+    // Shared AudioContext — created once, reused for all sounds
+    let _audioCtx = null;
+    function getAudioCtx(){
+      if (!_audioCtx || _audioCtx.state === 'closed'){
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      // Resume if suspended (browser autoplay policy)
+      if (_audioCtx.state === 'suspended') _audioCtx.resume();
+      return _audioCtx;
+    }
+
+    // Unlock AudioContext on first user interaction (required by browsers)
+    document.addEventListener('click', () => { try { getAudioCtx(); } catch {} }, { once: true });
+
     let soundEnabled = true;
-    function playGiftSound(diamonds) {
+
+    function playGiftSound(diamonds){
       if (!soundEnabled) return;
       try {
-        const ctx2 = new (window.AudioContext || window.webkitAudioContext)();
-        const osc  = ctx2.createOscillator();
-        const gain = ctx2.createGain();
-        osc.connect(gain); gain.connect(ctx2.destination);
-        const t = ctx2.currentTime;
-        if (diamonds >= 500) {
+        const ac   = getAudioCtx();
+        const osc  = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain);
+        gain.connect(ac.destination);
+        const t = ac.currentTime;
+
+        if (diamonds >= 500){
           // big gift — ascending fanfare
+          osc.type = 'triangle';
           osc.frequency.setValueAtTime(523, t);
           osc.frequency.setValueAtTime(659, t + 0.08);
           osc.frequency.setValueAtTime(784, t + 0.16);
           osc.frequency.setValueAtTime(1047, t + 0.24);
           gain.gain.setValueAtTime(0.35, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-          osc.start(t); osc.stop(t + 0.55);
-        } else if (diamonds >= 50) {
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+          osc.start(t); osc.stop(t + 0.6);
+        } else if (diamonds >= 50){
           // medium gift — two-tone ding
+          osc.type = 'sine';
           osc.frequency.setValueAtTime(660, t);
           osc.frequency.exponentialRampToValueAtTime(880, t + 0.12);
           gain.gain.setValueAtTime(0.25, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
           osc.start(t); osc.stop(t + 0.3);
-        } else if (diamonds >= 5) {
-          // small gift — soft click
-          osc.frequency.setValueAtTime(440, t);
+        } else if (diamonds >= 5){
+          // small gift — soft ding
           osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, t);
           gain.gain.setValueAtTime(0.12, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
           osc.start(t); osc.stop(t + 0.15);
+        } else {
+          // tiny gift (< 5 diamonds) — very soft plink
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(330, t);
+          gain.gain.setValueAtTime(0.05, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+          osc.start(t); osc.stop(t + 0.08);
         }
-        // < 5 diamonds: silent
+
+        // Cleanup audio nodes after sound finishes
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
       } catch {}
     }
 
@@ -588,13 +575,11 @@
       gifts.length = 0;
     });
 
-    function clamp(v, min, max) {
-      return Math.max(min, Math.min(max, v));
-    }
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
 
     function updatePosDisplay(){}
 
-    function applyFullState(state) {
+    function applyFullState(state){
       if (!state) return;
 
       if (state.allScale   !== undefined) allScale    = state.allScale;
@@ -602,30 +587,29 @@
       if (state.jarHeight  !== undefined) jar.height  = state.jarHeight;
       if (state.jarX       !== undefined) jar.x       = state.jarX;
       if (state.jarY       !== undefined) jar.y       = state.jarY;
-      if (state.giftWidth    !== undefined) gift.width    = state.giftWidth;
-      if (state.giftHeight   !== undefined) gift.height   = state.giftHeight;
-      if (state.giftX        !== undefined) gift.x        = state.giftX;
-      if (state.giftY        !== undefined) gift.y        = state.giftY;
-      if (state.giftSize      !== undefined) gift.size     = state.giftSize;
-      if (state.giftBounce    !== undefined) gift.bounce   = state.giftBounce;
-      if (state.giftFriction  !== undefined) gift.friction = state.giftFriction;
-      if (state.giftSpacing   !== undefined) gift.spacing  = state.giftSpacing;
-      // mouthOpacity không restore từ state — luôn bắt đầu ẩn (0), chỉ thay đổi khi user kéo slider
+      if (state.giftWidth  !== undefined) gift.width  = state.giftWidth;
+      if (state.giftHeight !== undefined) gift.height = state.giftHeight;
+      if (state.giftX      !== undefined) gift.x      = state.giftX;
+      if (state.giftY      !== undefined) gift.y      = state.giftY;
+      if (state.giftSize     !== undefined) gift.size    = state.giftSize;
+      if (state.giftBounce   !== undefined) gift.bounce  = state.giftBounce;
+      if (state.giftFriction !== undefined) gift.friction = state.giftFriction;
+      if (state.giftSpacing  !== undefined) gift.spacing  = state.giftSpacing;
 
-      if (state.jarImageUrl) {
+      if (state.jarImageUrl){
         const customImg = new Image();
         customImg.onload = () => { jar.img = customImg; };
         customImg.src = state.jarImageUrl;
       }
 
-      if (state.stickers && Array.isArray(state.stickers)) {
+      if (state.stickers && Array.isArray(state.stickers)){
         state.stickers.forEach((s, i) => {
           if (i >= stickers.length) return;
           if (s.width  !== undefined) stickers[i].width  = s.width;
           if (s.height !== undefined) stickers[i].height = s.height;
           if (s.x      !== undefined) stickers[i].x      = s.x;
           if (s.y      !== undefined) stickers[i].y      = s.y;
-          if (s.imageUrl) {
+          if (s.imageUrl){
             const img = new Image();
             img.onload = () => { stickers[i].img = img; };
             img.src = s.imageUrl;
@@ -638,8 +622,7 @@
 
     socket.on('jarStateInit', state => { applyFullState(state); });
 
-
-    function applyEffectControl(control, delta) {
+    function applyEffectControl(control, delta){
       if (control === 'jarWidth')  jar.width  = clamp(jar.width  + delta, 0.4, 2.3);
       if (control === 'jarHeight') jar.height = clamp(jar.height + delta, 0.4, 2.3);
       if (control === 'jarX')      jar.x      = clamp(jar.x      + delta, -600, 600);
@@ -647,7 +630,7 @@
       syncUI(); updatePosDisplay(); buildJarWalls();
     }
 
-    function resetEffectControl() {
+    function resetEffectControl(){
       jar.width  = 1; jar.height = 1;
       jar.x      = 0; jar.y      = 0;
       gift.width = 1; gift.height = 1;
@@ -669,23 +652,23 @@
       const v = Number(value);
       if (!Number.isFinite(v)) return;
 
-      if (control === 'jarWidth')   jar.width    = clamp(v, 0.4, 2.3);
-      if (control === 'jarHeight')  jar.height   = clamp(v, 0.4, 2.3);
-      if (control === 'jarX')       jar.x        = clamp(v, -600, 600);
-      if (control === 'jarY')       jar.y        = clamp(v, -900, 900);
-      if (control === 'giftWidth')    gift.width    = clamp(v, 0.5, 1.8);
-      if (control === 'giftHeight')   gift.height   = clamp(v, 0.5, 1.8);
-      if (control === 'giftX')        gift.x        = clamp(v, -600, 600);
-      if (control === 'giftY')        gift.y        = clamp(v, -900, 900);
-      if (control === 'giftSize')      gift.size     = clamp(v, 0.4, 1.8);
-      if (control === 'giftBounce')    gift.bounce   = clamp(v, 0.0, 0.35);
-      if (control === 'giftFriction')  gift.friction = clamp(v, 0.1, 1.0);
-      if (control === 'giftSpacing')   gift.spacing  = clamp(v, 0.0, 0.8);
-      if (control === 'allScale')      { allScale     = clamp(v, 0.2, 3.0); buildJarWalls(); }
-      if (control === 'mouthOpacity')  mouthOpacity  = clamp(v, 0.0, 1.0);
-      if (control === 'mouthX')        mouthX        = clamp(v, -400, 400);
-      if (control === 'mouthY')        mouthY        = clamp(v, -400, 400);
-      if (control === 'mouthScale')    mouthScale    = clamp(v, 0.2, 3.0);
+      if (control === 'jarWidth')    jar.width    = clamp(v, 0.4, 2.3);
+      if (control === 'jarHeight')   jar.height   = clamp(v, 0.4, 2.3);
+      if (control === 'jarX')        jar.x        = clamp(v, -600, 600);
+      if (control === 'jarY')        jar.y        = clamp(v, -900, 900);
+      if (control === 'giftWidth')   gift.width   = clamp(v, 0.5, 1.8);
+      if (control === 'giftHeight')  gift.height  = clamp(v, 0.5, 1.8);
+      if (control === 'giftX')       gift.x       = clamp(v, -600, 600);
+      if (control === 'giftY')       gift.y       = clamp(v, -900, 900);
+      if (control === 'giftSize')    gift.size    = clamp(v, 0.4, 1.8);
+      if (control === 'giftBounce')  gift.bounce  = clamp(v, 0.0, 0.35);
+      if (control === 'giftFriction') gift.friction = clamp(v, 0.1, 1.0);
+      if (control === 'giftSpacing')  gift.spacing  = clamp(v, 0.0, 0.8);
+      if (control === 'allScale')     { allScale    = clamp(v, 0.2, 3.0); buildJarWalls(); }
+      if (control === 'mouthOpacity')  mouthOpacity = clamp(v, 0.0, 1.0);
+      if (control === 'mouthX')        mouthX       = clamp(v, -400, 400);
+      if (control === 'mouthY')        mouthY       = clamp(v, -400, 400);
+      if (control === 'mouthScale')    mouthScale   = clamp(v, 0.2, 3.0);
 
       syncUI(); updatePosDisplay(); buildJarWalls();
     });
@@ -716,10 +699,10 @@
       if (!Number.isInteger(idx) || idx < 0 || idx >= stickers.length) return;
       const value = Number(payload.value);
       if (!Number.isFinite(value)) return;
-      if (payload.field === 'width') stickers[idx].width = value;
+      if (payload.field === 'width')  stickers[idx].width  = value;
       if (payload.field === 'height') stickers[idx].height = value;
-      if (payload.field === 'x') stickers[idx].x = value;
-      if (payload.field === 'y') stickers[idx].y = value;
+      if (payload.field === 'x')      stickers[idx].x      = value;
+      if (payload.field === 'y')      stickers[idx].y      = value;
     });
 
     socket.on('stickerReset', payload => {
@@ -731,21 +714,19 @@
       stickers[idx] = { img: null, width: 1, height: 1, x: sx, y: sy };
     });
 
-
-    function spawnGiftWithImage(imgUrl) {
+    function spawnGiftWithImage(imgUrl){
       spawnGiftCore(imgUrl || GIFTS[Math.floor(Math.random()*GIFTS.length)]);
     }
 
-    // Expose functions for external control
-    window.jarRain = function() {
+    window.jarRain = function(){
       const testDiamonds = [1, 1, 5, 5, 10, 10, 50, 100, 500];
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 20; i++){
         const d = testDiamonds[Math.floor(Math.random() * testDiamonds.length)];
         giftQueue.push({ imgSrc: GIFTS[Math.floor(Math.random()*GIFTS.length)], diamonds: d });
       }
     };
 
-    window.jarReset = function() {
+    window.jarReset = function(){
       for (const g of gifts) World.remove(world, g.body);
       gifts.length = 0;
     };
