@@ -511,53 +511,68 @@
     // Unlock AudioContext on first user interaction (required by browsers)
     document.addEventListener('click', () => { try { getAudioCtx(); } catch {} }, { once: true });
 
-    let soundEnabled = true;
+    let soundEnabled   = true;
+    let giftSoundVolume  = 80;
+    let giftCustomSounds = {};
+
+    function getTierKey(diamonds) {
+      if (diamonds >= 500) return '500';
+      if (diamonds >= 50)  return '50';
+      if (diamonds >= 5)   return '5';
+      return '1';
+    }
+
+    function playCustomSound(dataUrl, vol) {
+      try {
+        const audio = new Audio(dataUrl);
+        audio.volume = Math.min(1, Math.max(0, vol / 100));
+        audio.play().catch(() => {});
+      } catch {}
+    }
 
     function playGiftSound(diamonds){
       if (!soundEnabled) return;
+      const vol = giftSoundVolume;
+      const customUrl = giftCustomSounds[getTierKey(diamonds)];
+      if (customUrl) { playCustomSound(customUrl, vol); return; }
       try {
         const ac   = getAudioCtx();
         const osc  = ac.createOscillator();
         const gain = ac.createGain();
         osc.connect(gain);
         gain.connect(ac.destination);
-        const t = ac.currentTime;
+        const t  = ac.currentTime;
+        const vM = vol / 100;
 
         if (diamonds >= 500){
-          // big gift — ascending fanfare
           osc.type = 'triangle';
           osc.frequency.setValueAtTime(523, t);
           osc.frequency.setValueAtTime(659, t + 0.08);
           osc.frequency.setValueAtTime(784, t + 0.16);
           osc.frequency.setValueAtTime(1047, t + 0.24);
-          gain.gain.setValueAtTime(0.35, t);
+          gain.gain.setValueAtTime(0.35 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
           osc.start(t); osc.stop(t + 0.6);
         } else if (diamonds >= 50){
-          // medium gift — two-tone ding
           osc.type = 'sine';
           osc.frequency.setValueAtTime(660, t);
           osc.frequency.exponentialRampToValueAtTime(880, t + 0.12);
-          gain.gain.setValueAtTime(0.25, t);
+          gain.gain.setValueAtTime(0.25 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
           osc.start(t); osc.stop(t + 0.3);
         } else if (diamonds >= 5){
-          // small gift — soft ding
           osc.type = 'sine';
           osc.frequency.setValueAtTime(440, t);
-          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.setValueAtTime(0.12 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
           osc.start(t); osc.stop(t + 0.15);
         } else {
-          // tiny gift (< 5 diamonds) — very soft plink
           osc.type = 'sine';
           osc.frequency.setValueAtTime(330, t);
-          gain.gain.setValueAtTime(0.05, t);
+          gain.gain.setValueAtTime(0.05 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
           osc.start(t); osc.stop(t + 0.08);
         }
-
-        // Cleanup audio nodes after sound finishes
         osc.onended = () => { osc.disconnect(); gain.disconnect(); };
       } catch {}
     }
@@ -617,10 +632,17 @@
         });
       }
 
+      if (state.giftSoundVolume  !== undefined) giftSoundVolume  = state.giftSoundVolume;
+      if (state.giftCustomSounds)               giftCustomSounds = { ...state.giftCustomSounds };
       syncUI(); updatePosDisplay(); buildJarWalls();
     }
 
     socket.on('jarStateInit', state => { applyFullState(state); });
+
+    socket.on('giftSoundUpdated', data => {
+      if (data.volume      !== undefined) giftSoundVolume  = data.volume;
+      if (data.customSounds)              giftCustomSounds = { ...data.customSounds };
+    });
 
     function applyEffectControl(control, delta){
       if (control === 'jarWidth')  jar.width  = clamp(jar.width  + delta, 0.4, 2.3);

@@ -168,6 +168,8 @@ function defaultState() {
     mouthOpacity: 0, mouthX: 0, mouthY: 0, mouthScale: 1,
     // Alert
     alertMinDiamonds: 50, alertFollows: true, alertSound: true,
+    giftSoundVolume: 80,
+    giftCustomSounds: {},
     // Goal
     goalTarget: 0, goalCurrent: 0, goalLabel: "Mục tiêu hôm nay",
     // Auto-reset
@@ -254,8 +256,8 @@ function loadRoomConfig(room) {
     room.state = {
       ...fallback,
       ...parsed,
-      stickers: Array.isArray(parsed.stickers) && parsed.stickers.length === 5
-        ? parsed.stickers.map(s => ({ imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0, ...s }))
+      stickers: Array.isArray(parsed.stickers) && parsed.stickers.length >= 1 && parsed.stickers.length <= 20
+        ? parsed.stickers.map(s => ({ imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0, note: '', ...s }))
         : fallback.stickers
     };
   } catch (err) {
@@ -835,6 +837,27 @@ app.post("/room/:roomId/jar-control/sticker-reset", (req, res) => {
   res.json({ success: true });
 });
 
+app.post("/room/:roomId/jar-control/sticker-add", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  if (room.state.stickers.length >= 20)
+    return res.status(400).json({ success: false, message: "max 20 stickers" });
+  room.state.stickers.push({ imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0, note: '' });
+  applyAllOffset(room);
+  saveRoomConfig(req.params.roomId);
+  io.to(req.params.roomId).emit("stickerCountUpdated", { count: room.state.stickers.length });
+  res.json({ success: true, count: room.state.stickers.length, stickers: room.state.stickers });
+});
+
+app.post("/room/:roomId/jar-control/sticker-remove", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  if (room.state.stickers.length <= 1)
+    return res.status(400).json({ success: false, message: "min 1 sticker" });
+  room.state.stickers.pop();
+  saveRoomConfig(req.params.roomId);
+  io.to(req.params.roomId).emit("stickerCountUpdated", { count: room.state.stickers.length });
+  res.json({ success: true, count: room.state.stickers.length, stickers: room.state.stickers });
+});
+
 app.post("/room/:roomId/jar-control/save-config", (req, res) => {
   if (!requireRoom(req, res)) return;
   try { saveRoomConfig(req.params.roomId); res.json({ success: true }); }
@@ -918,6 +941,26 @@ app.post("/room/:roomId/alert/set", (req, res) => {
   if (minDiamonds !== undefined) room.state.alertMinDiamonds = Math.max(0, Number(minDiamonds) || 0);
   if (follows     !== undefined) room.state.alertFollows     = Boolean(follows);
   if (sound       !== undefined) room.state.alertSound       = Boolean(sound);
+  saveRoomConfig(req.params.roomId);
+  res.json({ success: true });
+});
+
+// ── Gift sound settings ───────────────────────────────────────────────────
+
+app.post("/room/:roomId/gift-sound/set", (req, res) => {
+  const room = requireRoom(req, res); if (!room) return;
+  const { volume, tier, audioUrl } = req.body || {};
+  if (volume !== undefined) room.state.giftSoundVolume = Math.min(100, Math.max(0, Number(volume) || 0));
+  if (tier !== undefined) {
+    if (!room.state.giftCustomSounds) room.state.giftCustomSounds = {};
+    if (audioUrl) {
+      room.state.giftCustomSounds[String(tier)] = String(audioUrl);
+    } else {
+      delete room.state.giftCustomSounds[String(tier)];
+    }
+    io.to(req.params.roomId).emit("giftSoundUpdated", { customSounds: room.state.giftCustomSounds });
+  }
+  if (volume !== undefined) io.to(req.params.roomId).emit("giftSoundUpdated", { volume: room.state.giftSoundVolume });
   saveRoomConfig(req.params.roomId);
   res.json({ success: true });
 });

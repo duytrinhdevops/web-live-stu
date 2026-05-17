@@ -94,7 +94,7 @@
     .bad { background: rgba(239,68,68,.2); border: 1px solid #ef4444; }
     .warn { background: rgba(245,158,11,.2); border: 1px solid #f59e0b; }
     h3 { margin: 0 0 10px; color: #93c5fd; }
-    .group-title { margin: 10px 0 8px; color: #c4b5fd; font-size: 13px; font-weight: bold; }
+    .group-title { margin: 10px 0 8px; color: #c4b5fd; font-size: 13px; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
     #stickerControls > div { margin: 10px 0; padding: 10px; border-radius: 8px; background: rgba(0,0,0,.25); }
     #noRoom {
       display: none;
@@ -168,6 +168,19 @@
     }
     .box-header:hover .box-toggle { color: #94a3b8; }
     .box-toggle.collapsed { transform: rotate(-90deg); }
+    /* ── Lock buttons ── */
+    .lock-btn {
+      background: none; border: 1px solid #334155; border-radius: 4px;
+      color: #64748b; padding: 1px 7px; font-size: 13px; cursor: pointer;
+      line-height: 1.5; flex-shrink: 0; user-select: none;
+    }
+    .lock-btn:hover { color: #e2e8f0; border-color: #64748b; }
+    .lock-btn.locked { color: #f87171; border-color: #f87171; }
+    .group-locked input[type="range"],
+    .group-locked input[type="text"],
+    .group-locked input[type="file"],
+    .group-locked select { opacity: 0.4; pointer-events: none; }
+    .group-locked button:not(.group-lock-btn) { opacity: 0.4; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -187,7 +200,7 @@
     </div>
   </header>
   <main class="wrap">
-    <section class="box">
+    <section class="box" data-no-collapse>
       <h3>Kết nối TikTok LIVE</h3>
       <div class="row">
         <span>ID TikTok</span>
@@ -220,7 +233,7 @@
     <section class="box">
       <h3>Cài đặt hiệu ứng: lọ quà, hộp quà, sticker</h3>
 
-      <div class="group-title">Tất cả hiệu ứng</div>
+      <div class="group-title" data-group-id="g0"><span>Tất cả hiệu ứng</span><button class="lock-btn group-lock-btn" title="Nhấn để khoá">🔓</button></div>
       <div class="row">
         <span>Tất cả Trái / Phải</span>
         <input id="slAllX" type="range" min="-600" max="600" value="0" step="1" oninput="onEffectSlider('allX', this)">
@@ -234,7 +247,7 @@
         <input id="slAllScale" type="range" min="20" max="300" value="100" step="1" oninput="onEffectSlider('allScale', this)">
       </div>
 
-      <div class="group-title">Lọ quà (ảnh nền hiển thị)</div>
+      <div class="group-title" data-group-id="g1"><span>Lọ quà (ảnh nền hiển thị)</span><button class="lock-btn group-lock-btn" title="Nhấn để khoá">🔓</button></div>
       <div class="row">
         <span>Upload ảnh lọ</span>
         <input type="file" id="jarImageFile" accept="image/*" style="font-size:12px;max-width:220px">
@@ -257,7 +270,7 @@
         <input id="slJarY" type="range" min="-900" max="900" value="0" step="1" oninput="onEffectSlider('jarY', this)">
       </div>
 
-      <div class="group-title">Hộp quà — Vùng chứa (physics)</div>
+      <div class="group-title" data-group-id="g2"><span>Hộp quà — Vùng chứa (physics)</span><button class="lock-btn group-lock-btn" title="Nhấn để khoá">🔓</button></div>
       <div class="row">
         <span>Chiều rộng vùng</span>
         <input id="slGiftWidth" type="range" min="50" max="180" value="100" step="1" oninput="onEffectSlider('giftWidth', this)">
@@ -275,7 +288,7 @@
         <input id="slGiftY" type="range" min="-900" max="900" value="0" step="1" oninput="onEffectSlider('giftY', this)">
       </div>
 
-      <div class="group-title">Kích cỡ quà &amp; vật lý</div>
+      <div class="group-title" data-group-id="g3"><span>Kích cỡ quà &amp; vật lý</span><button class="lock-btn group-lock-btn" title="Nhấn để khoá">🔓</button></div>
       <div class="row">
         <span>Kích cỡ quà</span>
         <input id="slGiftSize" type="range" min="40" max="180" value="100" step="1" oninput="onEffectSlider('giftSize', this)">
@@ -293,7 +306,7 @@
         <input id="slGiftSpacing" type="range" min="0" max="80" value="0" step="1" oninput="onEffectSlider('giftSpacing', this)">
       </div>
 
-      <div class="group-title">Hiệu ứng vòng miệng bình</div>
+      <div class="group-title" data-group-id="g4"><span>Hiệu ứng vòng miệng bình</span><button class="lock-btn group-lock-btn" title="Nhấn để khoá">🔓</button></div>
       <div class="row">
         <span>Độ mờ vòng miệng</span>
         <input id="slMouthOpacity" type="range" min="0" max="100" value="0" step="1" oninput="onEffectSlider('mouthOpacity', this)">
@@ -311,11 +324,11 @@
         <input id="slMouthScale" type="range" min="20" max="300" value="100" step="1" oninput="onEffectSlider('mouthScale', this)">
       </div>
 
-      <div class="group-title">Sticker custom (5 ảnh độc lập)</div>
+      <div class="group-title" data-group-id="g5"><span>Sticker custom</span><button class="lock-btn group-lock-btn" title="Nhấn để khoá">🔓</button></div>
       <div style="font-size:12px;color:#9ca3af;margin-bottom:8px">Mỗi sticker có thể upload ảnh riêng, chỉnh size và vị trí riêng.</div>
       <div id="stickerControls"></div>
 
-      <div class="group-title" style="margin-top:12px">Thả quà thử nghiệm</div>
+      <div class="group-title" style="margin-top:12px" data-group-id="g6"><span>Thả quà thử nghiệm</span><button class="lock-btn group-lock-btn" title="Nhấn để khoá">🔓</button></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
         <button class="btn" style="background:#1e3a5f;font-size:12px;padding:7px 4px" onclick="dropGift(1,1)">🌹 1 xu</button>
         <button class="btn" style="background:#1e3a5f;font-size:12px;padding:7px 4px" onclick="dropGift(5,1)">💎 5 xu</button>
@@ -334,6 +347,51 @@
         <button class="btn" onclick="saveConfig()">Lưu Config</button>
       </div>
       <div id="saveNotice" style="margin-top:8px;font-size:13px;color:#10b981;min-height:18px"></div>
+    </section>
+
+    <section class="box">
+      <h3>Âm thanh quà tặng</h3>
+      <div class="row">
+        <span>Âm lượng hiệu ứng</span>
+        <input id="slGiftVolume" type="range" min="0" max="100" value="80" step="5" oninput="onGiftVolume(this)">
+        <span id="giftVolumeVal" style="min-width:36px;font-size:12px;color:#fff;text-align:right">80%</span>
+      </div>
+      <div style="margin-top:12px;border-top:1px solid #1e293b;padding-top:12px">
+        <div style="font-size:13px;font-weight:600;color:#93c5fd;margin-bottom:6px">Âm thanh riêng theo mức xu</div>
+        <div style="font-size:12px;color:#9ca3af;margin-bottom:10px">Upload file .mp3 / .wav cho từng mức. Không upload = dùng âm mặc định.</div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600;color:#fbbf24;margin-bottom:4px">👑 500+ xu</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="file" id="giftSoundFile500" accept="audio/*" style="font-size:11px;flex:1;min-width:0" onchange="uploadGiftSound('500',this)">
+            <span id="giftSoundStatus500" style="font-size:11px;color:#9ca3af;white-space:nowrap">Mặc định</span>
+            <button class="btn btn-red" onclick="removeGiftSound('500')" style="font-size:11px;padding:4px 10px">Xoá</button>
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600;color:#c4b5fd;margin-bottom:4px">💎 50–499 xu</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="file" id="giftSoundFile50" accept="audio/*" style="font-size:11px;flex:1;min-width:0" onchange="uploadGiftSound('50',this)">
+            <span id="giftSoundStatus50" style="font-size:11px;color:#9ca3af;white-space:nowrap">Mặc định</span>
+            <button class="btn btn-red" onclick="removeGiftSound('50')" style="font-size:11px;padding:4px 10px">Xoá</button>
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600;color:#93c5fd;margin-bottom:4px">💎 5–49 xu</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="file" id="giftSoundFile5" accept="audio/*" style="font-size:11px;flex:1;min-width:0" onchange="uploadGiftSound('5',this)">
+            <span id="giftSoundStatus5" style="font-size:11px;color:#9ca3af;white-space:nowrap">Mặc định</span>
+            <button class="btn btn-red" onclick="removeGiftSound('5')" style="font-size:11px;padding:4px 10px">Xoá</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px">🌹 Dưới 5 xu</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="file" id="giftSoundFile1" accept="audio/*" style="font-size:11px;flex:1;min-width:0" onchange="uploadGiftSound('1',this)">
+            <span id="giftSoundStatus1" style="font-size:11px;color:#9ca3af;white-space:nowrap">Mặc định</span>
+            <button class="btn btn-red" onclick="removeGiftSound('1')" style="font-size:11px;padding:4px 10px">Xoá</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="box">
@@ -837,17 +895,25 @@
     }
 
     // ── Sticker controls ──────────────────────────────────────────────────
-    function buildStickerControls() {
+    function buildStickerControls(count) {
+      count = (count && count >= 1 && count <= 20) ? count : 5;
       const container = document.getElementById('stickerControls');
       if (!container) return;
-      for (let i = 0; i < 5; i++) {
+      container.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const stickerKey = `lock_sticker_${i}`;
+        const isLocked = localStorage.getItem(stickerKey) === '1';
         const section = document.createElement('div');
+        section.id = `stickerSection${i}`;
         section.innerHTML = `
           <div class="sticker-header" onclick="toggleSticker(this)" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:6px 0;user-select:none">
             <span style="font-weight:bold;color:#fbbf24;font-size:13px">Sticker ${i + 1} <span id="stickerNoteLabel${i}" style="color:#9ca3af;font-weight:normal;font-size:11px"></span></span>
-            <span class="sticker-toggle" style="font-size:11px;color:#64748b;background:#1e293b;border-radius:4px;padding:2px 7px">▼</span>
+            <div style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
+              <button class="lock-btn sticker-lock-btn${isLocked ? ' locked' : ''}" onclick="toggleStickerLock(${i})" title="${isLocked ? 'Đang khoá — nhấn để mở' : 'Nhấn để khoá'}">${isLocked ? '🔒' : '🔓'}</button>
+              <span class="sticker-toggle" style="font-size:11px;color:#64748b;background:#1e293b;border-radius:4px;padding:2px 7px;pointer-events:none">▼</span>
+            </div>
           </div>
-          <div class="sticker-body" style="display:none">
+          <div class="sticker-body${isLocked ? ' group-locked' : ''}" style="display:none">
             <div class="row">
               <span>Ghi chú</span>
               <input type="text" id="stickerNote${i}" placeholder="Tên / mô tả sticker..." maxlength="50"
@@ -870,6 +936,13 @@
         document.getElementById(`stickerFile${i}`).addEventListener('change', (e) => uploadStickerImage(i, e));
         updateStickerStatus(i, false);
       }
+      const addRemoveDiv = document.createElement('div');
+      addRemoveDiv.style.cssText = 'display:flex;gap:8px;margin-top:10px';
+      addRemoveDiv.innerHTML = `
+        <button class="btn btn-green" onclick="addStickerSlot()" style="flex:1;font-size:12px">+ Thêm sticker</button>
+        <button class="btn btn-red" onclick="removeStickerSlot()" style="flex:1;font-size:12px">− Xoá sticker cuối</button>
+      `;
+      container.appendChild(addRemoveDiv);
     }
 
     function toggleSticker(header) {
@@ -878,6 +951,56 @@
       const isHidden = body.style.display === 'none';
       body.style.display = isHidden ? '' : 'none';
       toggle.textContent = isHidden ? '▲' : '▼';
+    }
+
+    function toggleStickerLock(index) {
+      const stickerKey = `lock_sticker_${index}`;
+      const section = document.getElementById(`stickerSection${index}`);
+      if (!section) return;
+      const btn = section.querySelector('.sticker-lock-btn');
+      const body = section.querySelector('.sticker-body');
+      const isLocked = btn && btn.classList.contains('locked');
+      const newLocked = !isLocked;
+      localStorage.setItem(stickerKey, newLocked ? '1' : '0');
+      if (btn) {
+        btn.classList.toggle('locked', newLocked);
+        btn.textContent = newLocked ? '🔒' : '🔓';
+        btn.title = newLocked ? 'Đang khoá — nhấn để mở' : 'Nhấn để khoá';
+      }
+      if (body) body.classList.toggle('group-locked', newLocked);
+    }
+
+    function rebuildAndApplyStickers(stickers) {
+      buildStickerControls(stickers.length);
+      stickers.forEach((s, i) => {
+        const w = document.getElementById(`slStickerW${i}`);
+        const h = document.getElementById(`slStickerH${i}`);
+        const x = document.getElementById(`slStickerX${i}`);
+        const y = document.getElementById(`slStickerY${i}`);
+        if (w && s.width  !== undefined) w.value = Math.round(Number(s.width)  * 100);
+        if (h && s.height !== undefined) h.value = Math.round(Number(s.height) * 100);
+        if (x && s.baseX  !== undefined) x.value = Number(s.baseX);
+        if (y && s.baseY  !== undefined) y.value = Number(s.baseY);
+        updateStickerStatus(i, !!s.imageUrl);
+        const noteEl = document.getElementById(`stickerNote${i}`);
+        if (noteEl) noteEl.value = s.note || '';
+        const label = document.getElementById(`stickerNoteLabel${i}`);
+        if (label) label.textContent = s.note ? `— ${s.note}` : '';
+      });
+    }
+
+    async function addStickerSlot() {
+      const res = await fetch(api('/jar-control/sticker-add'), { method: 'POST' });
+      if (!res.ok) return;
+      const data = await res.json();
+      rebuildAndApplyStickers(data.stickers);
+    }
+
+    async function removeStickerSlot() {
+      const res = await fetch(api('/jar-control/sticker-remove'), { method: 'POST' });
+      if (!res.ok) return;
+      const data = await res.json();
+      rebuildAndApplyStickers(data.stickers);
     }
 
     async function onStickerNote(index, input) {
@@ -953,6 +1076,8 @@
       if (state.mouthOpacity !== undefined) setSliderValue('mouthOpacity', state.mouthOpacity);
       if (state.jarImageUrl) document.getElementById('jarImageStatus').textContent = '✓ Đã thêm';
       if (Array.isArray(state.stickers)) {
+        const currentCount = document.querySelectorAll('#stickerControls .sticker-header').length;
+        if (state.stickers.length !== currentCount) buildStickerControls(state.stickers.length);
         state.stickers.forEach((s, i) => {
           const w = document.getElementById(`slStickerW${i}`);
           const h = document.getElementById(`slStickerH${i}`);
@@ -980,6 +1105,16 @@
       if (state.alertMinDiamonds !== undefined) { const el = document.getElementById('inpAlertMin'); if (el) el.value = state.alertMinDiamonds; }
       if (state.alertFollows     !== undefined) { const el = document.getElementById('chkAlertFollows'); if (el) el.checked = state.alertFollows; }
       if (state.alertSound       !== undefined) { const el = document.getElementById('chkAlertSound');   if (el) el.checked = state.alertSound; }
+      if (state.giftSoundVolume !== undefined) {
+        const sl = document.getElementById('slGiftVolume');
+        if (sl) { sl.value = state.giftSoundVolume; document.getElementById('giftVolumeVal').textContent = state.giftSoundVolume + '%'; }
+      }
+      if (state.giftCustomSounds) {
+        ['500','50','5','1'].forEach(tier => {
+          const el = document.getElementById(`giftSoundStatus${tier}`);
+          if (el && state.giftCustomSounds[tier]) { el.textContent = '✓ Custom'; el.style.color = '#10b981'; }
+        });
+      }
       if (state.autoResetMins    !== undefined) {
         const el = document.getElementById('inpAutoReset'); if (el) el.value = state.autoResetMins;
         const st = document.getElementById('autoResetStatus');
@@ -1410,9 +1545,11 @@
 
     buildStickerControls();
     setupCollapsible();
+    initGroupLocks();
 
     function setupCollapsible() {
       document.querySelectorAll('main .box').forEach(box => {
+        if ('noCollapse' in box.dataset) return;
         const h3 = box.querySelector(':scope > h3');
         if (!h3) return;
         const header = document.createElement('div');
@@ -1440,6 +1577,75 @@
           toggle.classList.toggle('collapsed', !hidden);
         });
       });
+    }
+
+    function initGroupLocks() {
+      document.querySelectorAll('.group-lock-btn').forEach(btn => {
+        const titleEl = btn.closest('.group-title');
+        if (!titleEl) return;
+        const groupId = titleEl.dataset.groupId || '';
+        const isLocked = groupId && localStorage.getItem(`lock_group_${groupId}`) === '1';
+
+        const groupEls = [];
+        let next = titleEl.nextElementSibling;
+        while (next && !next.classList.contains('group-title')) {
+          groupEls.push(next);
+          next = next.nextElementSibling;
+        }
+
+        function applyLock(locked) {
+          groupEls.forEach(el => el.classList.toggle('group-locked', locked));
+          btn.classList.toggle('locked', locked);
+          btn.textContent = locked ? '🔒' : '🔓';
+          btn.title = locked ? 'Đang khoá — nhấn để mở' : 'Nhấn để khoá';
+        }
+
+        if (isLocked) applyLock(true);
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newLocked = !btn.classList.contains('locked');
+          if (groupId) localStorage.setItem(`lock_group_${groupId}`, newLocked ? '1' : '0');
+          applyLock(newLocked);
+        });
+      });
+    }
+
+    // ── Gift sound controls ───────────────────────────────────────────────
+    async function onGiftVolume(slider) {
+      const vol = Number(slider.value);
+      document.getElementById('giftVolumeVal').textContent = vol + '%';
+      await fetch(api('/gift-sound/set'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volume: vol })
+      });
+    }
+
+    async function uploadGiftSound(tier, input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const res = await fetch(api('/gift-sound/set'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier, audioUrl: reader.result })
+        });
+        if (res.ok) {
+          const el = document.getElementById(`giftSoundStatus${tier}`);
+          if (el) { el.textContent = '✓ ' + file.name; el.style.color = '#10b981'; }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function removeGiftSound(tier) {
+      await fetch(api('/gift-sound/set'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, audioUrl: null })
+      });
+      const input = document.getElementById(`giftSoundFile${tier}`);
+      if (input) input.value = '';
+      const el = document.getElementById(`giftSoundStatus${tier}`);
+      if (el) { el.textContent = 'Mặc định'; el.style.color = '#9ca3af'; }
     }
   </script>
 </body>
