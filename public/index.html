@@ -155,6 +155,19 @@
     @media (max-width: 400px) {
       header > span:first-child { display: none; }
     }
+    /* ── Collapsible box ── */
+    .box-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; margin-bottom: 10px;
+    }
+    .box-header h3 { margin: 0; }
+    .box-toggle {
+      font-size: 13px; color: #64748b;
+      transition: transform .2s; flex-shrink: 0; padding: 2px 6px;
+      border-radius: 4px; background: #1e293b;
+    }
+    .box-header:hover .box-toggle { color: #94a3b8; }
+    .box-toggle.collapsed { transform: rotate(-90deg); }
   </style>
 </head>
 <body>
@@ -630,12 +643,28 @@
     }
 
     function copyObsLink(url, btn) {
-      navigator.clipboard.writeText(url).then(() => {
+      const flash = () => {
         const orig = btn.textContent;
         btn.textContent = '✓ Copied';
         btn.style.color = '#4ade80';
         setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
-      });
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(flash).catch(() => {
+          fallbackCopy(url); flash();
+        });
+      } else {
+        fallbackCopy(url); flash();
+      }
+    }
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta);
     }
 
     // Helper: prefixes route with /room/:roomId
@@ -814,22 +843,51 @@
       for (let i = 0; i < 5; i++) {
         const section = document.createElement('div');
         section.innerHTML = `
-          <div style="font-weight:bold;margin-bottom:8px;color:#fbbf24">Sticker ${i + 1}</div>
-          <div class="row">
-            <span>Upload ảnh</span>
-            <input type="file" id="stickerFile${i}" accept="image/*" style="font-size:11px;max-width:200px">
-            <span id="stickerStatus${i}" style="font-size:11px;color:#10b981"></span>
+          <div class="sticker-header" onclick="toggleSticker(this)" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:6px 0;user-select:none">
+            <span style="font-weight:bold;color:#fbbf24;font-size:13px">Sticker ${i + 1} <span id="stickerNoteLabel${i}" style="color:#9ca3af;font-weight:normal;font-size:11px"></span></span>
+            <span class="sticker-toggle" style="font-size:11px;color:#64748b;background:#1e293b;border-radius:4px;padding:2px 7px">▼</span>
           </div>
-          <div class="row"><span>Chiều rộng</span><input id="slStickerW${i}" type="range" min="10" max="300" value="100" step="1" oninput="onStickerSlider(${i},'width',this)"></div>
-          <div class="row"><span>Chiều cao</span><input id="slStickerH${i}" type="range" min="10" max="300" value="100" step="1" oninput="onStickerSlider(${i},'height',this)"></div>
-          <div class="row"><span>Trái / Phải</span><input id="slStickerX${i}" type="range" min="-600" max="600" value="0" step="1" oninput="onStickerSlider(${i},'x',this)"></div>
-          <div class="row"><span>Lên / Xuống</span><input id="slStickerY${i}" type="range" min="-900" max="900" value="0" step="1" oninput="onStickerSlider(${i},'y',this)"></div>
-          <button class="btn btn-red" onclick="resetSticker(${i})" style="width:100%;margin-top:6px">Reset Sticker ${i + 1}</button>
+          <div class="sticker-body" style="display:none">
+            <div class="row">
+              <span>Ghi chú</span>
+              <input type="text" id="stickerNote${i}" placeholder="Tên / mô tả sticker..." maxlength="50"
+                style="flex:1;background:#0f1117;border:1px solid #334155;border-radius:8px;color:#fff;padding:6px 10px;font-size:12px"
+                oninput="onStickerNote(${i}, this)">
+            </div>
+            <div class="row">
+              <span>Upload ảnh</span>
+              <input type="file" id="stickerFile${i}" accept="image/*" style="font-size:11px;max-width:200px">
+              <span id="stickerStatus${i}" style="font-size:11px;color:#10b981"></span>
+            </div>
+            <div class="row"><span>Chiều rộng</span><input id="slStickerW${i}" type="range" min="10" max="300" value="100" step="1" oninput="onStickerSlider(${i},'width',this)"></div>
+            <div class="row"><span>Chiều cao</span><input id="slStickerH${i}" type="range" min="10" max="300" value="100" step="1" oninput="onStickerSlider(${i},'height',this)"></div>
+            <div class="row"><span>Trái / Phải</span><input id="slStickerX${i}" type="range" min="-600" max="600" value="0" step="1" oninput="onStickerSlider(${i},'x',this)"></div>
+            <div class="row"><span>Lên / Xuống</span><input id="slStickerY${i}" type="range" min="-900" max="900" value="0" step="1" oninput="onStickerSlider(${i},'y',this)"></div>
+            <button class="btn btn-red" onclick="resetSticker(${i})" style="width:100%;margin-top:6px">Reset Sticker ${i + 1}</button>
+          </div>
         `;
         container.appendChild(section);
         document.getElementById(`stickerFile${i}`).addEventListener('change', (e) => uploadStickerImage(i, e));
         updateStickerStatus(i, false);
       }
+    }
+
+    function toggleSticker(header) {
+      const body = header.nextElementSibling;
+      const toggle = header.querySelector('.sticker-toggle');
+      const isHidden = body.style.display === 'none';
+      body.style.display = isHidden ? '' : 'none';
+      toggle.textContent = isHidden ? '▲' : '▼';
+    }
+
+    async function onStickerNote(index, input) {
+      const note = input.value.trim();
+      const label = document.getElementById(`stickerNoteLabel${index}`);
+      if (label) label.textContent = note ? `— ${note}` : '';
+      await fetch(api('/jar-control/sticker-set'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index, field: 'note', value: note })
+      });
     }
 
     function updateStickerStatus(index, hasImage) {
@@ -905,6 +963,12 @@
           if (x && s.baseX  !== undefined) x.value = Number(s.baseX);
           if (y && s.baseY  !== undefined) y.value = Number(s.baseY);
           updateStickerStatus(i, !!s.imageUrl);
+          if (s.note !== undefined) {
+            const noteEl = document.getElementById(`stickerNote${i}`);
+            if (noteEl) noteEl.value = s.note || '';
+            const label = document.getElementById(`stickerNoteLabel${i}`);
+            if (label) label.textContent = s.note ? `— ${s.note}` : '';
+          }
         });
       }
       if (state.commentVisible !== undefined) applyCommentVisible(state.commentVisible);
@@ -1345,6 +1409,38 @@
     }
 
     buildStickerControls();
+    setupCollapsible();
+
+    function setupCollapsible() {
+      document.querySelectorAll('main .box').forEach(box => {
+        const h3 = box.querySelector(':scope > h3');
+        if (!h3) return;
+        const header = document.createElement('div');
+        header.className = 'box-header';
+        const toggle = document.createElement('span');
+        toggle.className = 'box-toggle collapsed';
+        toggle.textContent = '▶';
+        h3.parentNode.insertBefore(header, h3);
+        header.appendChild(h3);
+        header.appendChild(toggle);
+        const body = document.createElement('div');
+        body.className = 'box-body';
+        body.style.display = 'none';
+        let next = header.nextSibling;
+        while (next) {
+          const tmp = next.nextSibling;
+          body.appendChild(next);
+          next = tmp;
+        }
+        box.appendChild(body);
+        header.addEventListener('click', () => {
+          const hidden = body.style.display === 'none';
+          body.style.display = hidden ? '' : 'none';
+          toggle.textContent = hidden ? '▼' : '▶';
+          toggle.classList.toggle('collapsed', !hidden);
+        });
+      });
+    }
   </script>
 </body>
 </html>

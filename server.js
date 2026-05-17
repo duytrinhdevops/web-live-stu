@@ -178,7 +178,7 @@ function defaultState() {
     ...googleRead.DEFAULT_STATE,
     ...translateOverlay.DEFAULT_STATE,
     ...speechTranslate.DEFAULT_STATE,
-    stickers: Array(5).fill(null).map(() => ({ imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0 }))
+    stickers: Array(5).fill(null).map(() => ({ imageUrl: null, width: 1, height: 1, baseX: 0, baseY: 0, note: '' }))
   };
 }
 
@@ -800,8 +800,16 @@ app.post("/room/:roomId/jar-control/sticker-set", (req, res) => {
   const room = requireRoom(req, res); if (!room) return;
   const { index, field, value } = req.body || {};
   const idx = getStickerIndex(index, room);
-  const v   = Number(value);
-  if (idx < 0 || !["x","y","width","height"].includes(field) || !Number.isFinite(v))
+  if (idx < 0) return res.status(400).json({ success: false, message: "invalid sticker index" });
+
+  if (field === "note") {
+    room.state.stickers[idx].note = String(value || "").slice(0, 100);
+    saveRoomConfig(req.params.roomId);
+    return res.json({ success: true });
+  }
+
+  const v = Number(value);
+  if (!["x","y","width","height"].includes(field) || !Number.isFinite(v))
     return res.status(400).json({ success: false, message: "invalid payload" });
 
   if (field === "x")      room.state.stickers[idx].baseX  = v;
