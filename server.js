@@ -145,6 +145,16 @@ app.use(express.json({ limit: "20mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/room/:roomId", mwRoomOwner);
 
+// Route gốc: home page cho khách, control panel cho user đã login
+app.get("/", (req, res) => {
+  if (req.query.room) {
+    const s = getSessionFromReq(req);
+    if (!s) return res.redirect("/login");
+    return res.sendFile(path.join(__dirname, "public/index.html"));
+  }
+  res.sendFile(path.join(__dirname, "public/home.html"));
+});
+
 // ── Room state ────────────────────────────────────────────────────────────
 
 function defaultState() {

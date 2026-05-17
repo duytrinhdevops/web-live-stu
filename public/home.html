@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>TikTok Live Studio — Duy Trinh</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0b0d14;
+      --card:    #13161f;
+      --border:  #1e2333;
+      --border2: #2a3050;
+      --purple:  #7c3aed;
+      --purple2: #9d5cf5;
+      --violet:  #a78bfa;
+      --pink:    #ec4899;
+      --teal:    #06b6d4;
+      --green:   #22c55e;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --soft:    #94a3b8;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Orbs background ── */
+    .orbs {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18;
+      animation: drift 18s ease-in-out infinite;
+    }
+    .orb-1 { width: 600px; height: 600px; background: #7c3aed; top: -150px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 500px; height: 500px; background: #ec4899; bottom: 10%; right: -100px; animation-delay: -6s; }
+    .orb-3 { width: 400px; height: 400px; background: #06b6d4; top: 40%; left: 30%; animation-delay: -12s; }
+    @keyframes drift {
+      0%,100% { transform: translate(0, 0) scale(1); }
+      33%      { transform: translate(40px, -30px) scale(1.05); }
+      66%      { transform: translate(-30px, 20px) scale(0.95); }
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(11,13,20,.85); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto; padding: 0 24px;
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px; text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .nav-logo-text { font-size: 16px; font-weight: 700; color: var(--violet); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-link {
+      color: var(--soft); font-size: 13px; text-decoration: none; padding: 6px 12px;
+      border-radius: 6px; transition: color .15s, background .15s;
+    }
+    .nav-link:hover { color: var(--text); background: var(--border); }
+    .btn-login {
+      background: var(--purple); color: #fff; border: none;
+      padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 700;
+      cursor: pointer; text-decoration: none;
+      transition: background .15s, transform .1s, box-shadow .15s;
+      box-shadow: 0 0 0 0 rgba(124,58,237,0);
+    }
+    .btn-login:hover {
+      background: var(--purple2); transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(124,58,237,.45);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      padding: 100px 0 60px;
+    }
+    .hero-inner {
+      text-align: center; max-width: 780px; margin: 0 auto;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(124,58,237,.12); border: 1px solid rgba(124,58,237,.35);
+      border-radius: 20px; padding: 6px 14px; font-size: 12px;
+      color: var(--violet); margin-bottom: 28px;
+    }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 68px);
+      font-weight: 800; line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 22px;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #06b6d4 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: clamp(15px, 2vw, 18px); color: var(--soft); line-height: 1.7;
+      margin-bottom: 36px; max-width: 580px; margin-left: auto; margin-right: auto;
+    }
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--purple), #9333ea);
+      color: #fff; border: none; padding: 14px 32px;
+      border-radius: 10px; font-size: 15px; font-weight: 700;
+      cursor: pointer; text-decoration: none;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 24px rgba(124,58,237,.4);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,.55); }
+    .btn-outline {
+      background: transparent; color: var(--violet);
+      border: 1px solid rgba(124,58,237,.5); padding: 14px 28px;
+      border-radius: 10px; font-size: 15px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      transition: background .15s, border-color .15s, transform .15s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-outline:hover { background: rgba(124,58,237,.1); border-color: var(--purple); transform: translateY(-2px); }
+
+    .hero-stats {
+      display: flex; gap: 32px; justify-content: center; flex-wrap: wrap;
+      margin-top: 52px; padding-top: 40px;
+      border-top: 1px solid var(--border);
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 28px; font-weight: 800; color: var(--violet); }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── SECTION HEADING ── */
+    section { padding: 80px 0; position: relative; z-index: 1; }
+    .section-label {
+      text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--purple2); margin-bottom: 12px;
+    }
+    .section-title {
+      text-align: center; font-size: clamp(24px, 4vw, 38px);
+      font-weight: 800; margin-bottom: 14px; letter-spacing: -.01em;
+    }
+    .section-sub {
+      text-align: center; font-size: 15px; color: var(--soft);
+      max-width: 560px; margin: 0 auto 52px; line-height: 1.65;
+    }
+
+    /* ── FEATURES GRID ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .feat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px 24px;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      position: relative; overflow: hidden;
+    }
+    .feat-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: 16px;
+      background: linear-gradient(135deg, rgba(124,58,237,.06) 0%, transparent 60%);
+      opacity: 0; transition: opacity .2s;
+    }
+    .feat-card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-icon {
+      width: 48px; height: 48px; border-radius: 12px; margin-bottom: 18px;
+      display: flex; align-items: center; justify-content: center; font-size: 22px;
+    }
+    .feat-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+    .feat-desc { font-size: 13px; color: var(--soft); line-height: 1.65; }
+
+    /* ── HOW IT WORKS ── */
+    .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+    .step {
+      text-align: center; padding: 28px 20px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), #9333ea);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; margin: 0 auto 16px; color: #fff;
+    }
+    .step-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .step-desc { font-size: 12px; color: var(--soft); line-height: 1.6; }
+
+    /* ── CONTACT ── */
+    .contact-section {
+      background: linear-gradient(135deg, rgba(124,58,237,.08) 0%, rgba(236,72,153,.06) 100%);
+      border: 1px solid var(--border2); border-radius: 24px; padding: 52px 40px;
+      text-align: center;
+    }
+    .contact-title { font-size: clamp(22px, 3vw, 32px); font-weight: 800; margin-bottom: 10px; }
+    .contact-sub { font-size: 14px; color: var(--soft); margin-bottom: 36px; }
+    .contact-cards {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px;
+    }
+    .contact-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 14px; padding: 18px 24px; text-decoration: none;
+      transition: border-color .15s, transform .15s, box-shadow .15s;
+      min-width: 220px;
+    }
+    .contact-card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+    .contact-card-icon {
+      width: 46px; height: 46px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 22px;
+      flex-shrink: 0;
+    }
+    .icon-zalo   { background: linear-gradient(135deg, #006af5, #0099ff); }
+    .icon-fb     { background: linear-gradient(135deg, #1877f2, #0a5fd0); }
+    .contact-card-info { text-align: left; }
+    .contact-card-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 3px; }
+    .contact-card-value { font-size: 14px; font-weight: 700; color: var(--text); }
+    .btn-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--purple), #9333ea);
+      color: #fff; text-decoration: none; border-radius: 10px;
+      padding: 14px 36px; font-size: 15px; font-weight: 700;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 20px rgba(124,58,237,.4);
+    }
+    .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,58,237,.55); }
+
+    /* ── DIVIDER ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative; z-index: 1;
+      padding: 28px 24px; text-align: center;
+    }
+    .footer-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .footer-logo { font-size: 14px; font-weight: 700; color: var(--violet); }
+    .footer-copy { font-size: 12px; color: var(--muted); }
+    .footer-links { display: flex; gap: 16px; }
+    .footer-links a { font-size: 12px; color: var(--muted); text-decoration: none; transition: color .15s; }
+    .footer-links a:hover { color: var(--soft); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #2a3050; border-radius: 3px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .hero { padding: 90px 0 40px; }
+      .hero-stats { gap: 20px; }
+      .contact-section { padding: 36px 20px; }
+      .contact-card { min-width: 160px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr 1fr; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .nav-logo-text { display: none; }
+    }
+    @media (max-width: 400px) {
+      .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Background orbs -->
+<div class="orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">🎙️</div>
+      <span class="nav-logo-text">TikTok Live Studio</span>
+    </a>
+    <div class="nav-right">
+      <a href="#features" class="nav-link">Tính năng</a>
+      <a href="#contact" class="nav-link">Liên hệ</a>
+      <a href="/login" class="btn-login">Đăng nhập</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-inner">
+
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Hệ thống đang hoạt động
+      </div>
+
+      <h1>
+        Studio chuyên nghiệp<br>
+        cho <span class="gradient-text">TikTok Live</span>
+      </h1>
+
+      <p>
+        Nâng tầm buổi livestream với hiệu ứng quà tặng 3D, bảng xếp hạng real-time,
+        mục tiêu tích lũy diamond và hàng loạt overlay đẹp mắt — tất cả chạy trực tiếp trên OBS.
+      </p>
+
+      <div class="hero-actions">
+        <a href="/login" class="btn-primary">
+          🚀 Bắt đầu ngay
+        </a>
+        <a href="#features" class="btn-outline">
+          ✨ Xem tính năng
+        </a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num">3D</div>
+          <div class="stat-label">Hiệu ứng vật lý</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">Real‑time</div>
+          <div class="stat-label">Cập nhật tức thì</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">OBS</div>
+          <div class="stat-label">Tương thích đầy đủ</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">24/7</div>
+          <div class="stat-label">Luôn hoạt động</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-label">Tính năng</div>
+    <h2 class="section-title">Mọi thứ bạn cần cho livestream</h2>
+    <p class="section-sub">
+      Từ hiệu ứng quà 3D đến overlay comment, mọi tính năng được thiết kế
+      để tăng tương tác và giữ chân khán giả.
+    </p>
+
+    <div class="features-grid">
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#7c3aed22,#7c3aed44)">🫙</div>
+        <div class="feat-title">Lọ quà 3D Physics</div>
+        <div class="feat-desc">
+          Quà tặng của người xem rơi vào lọ với hiệu ứng vật lý chân thực.
+          Scale tự động theo giá trị diamond, âm thanh theo từng mức.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#ec489922,#ec489944)">🏆</div>
+        <div class="feat-title">Bảng xếp hạng</div>
+        <div class="feat-desc">
+          Top 10 người tặng quà nhiều nhất trong buổi live, cập nhật real-time
+          với huy hiệu vàng–bạc–đồng, hiện thị đẹp trên OBS.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#22c55e22,#22c55e44)">🎯</div>
+        <div class="feat-title">Thanh mục tiêu</div>
+        <div class="feat-desc">
+          Đặt mục tiêu diamond cho buổi live, thanh tiến độ tự fill khi nhận quà.
+          Đổi màu xanh khi đạt 100%, tạo động lực cho người xem.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#f59e0b22,#f59e0b44)">🔔</div>
+        <div class="feat-title">Alert popup</div>
+        <div class="feat-desc">
+          Popup nổi bật khi nhận quà lớn hoặc có người follow mới.
+          Tuỳ chỉnh ngưỡng diamond, âm thanh báo động, tự ẩn sau 4 giây.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#06b6d422,#06b6d444)">💬</div>
+        <div class="feat-title">Overlay comment</div>
+        <div class="feat-desc">
+          Hiển thị comment từ TikTok Live lên màn hình OBS theo thời gian thực.
+          Bộ lọc từ khoá, điều chỉnh font size, ẩn/hiện linh hoạt.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#a78bfa22,#a78bfa44)">🎨</div>
+        <div class="feat-title">Preset giao diện</div>
+        <div class="feat-desc">
+          Lưu và load nhiều bộ cấu hình khác nhau. Chuyển đổi giao diện
+          trong vài giây mà không cần cấu hình lại từ đầu.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#ef444422,#ef444444)">🌐</div>
+        <div class="feat-title">Dịch comment</div>
+        <div class="feat-desc">
+          Tự động dịch comment của khán giả sang ngôn ngữ khác,
+          hiển thị song song bản gốc và bản dịch trên OBS overlay.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#84cc1622,#84cc1644)">🔊</div>
+        <div class="feat-title">Đọc comment (TTS)</div>
+        <div class="feat-desc">
+          Tính năng Chị Google đọc to comment trực tiếp trên tab quản lý.
+          Hỗ trợ tiếng Việt, điều chỉnh tốc độ và âm lượng.
+        </div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#0ea5e922,#0ea5e944)">📊</div>
+        <div class="feat-title">Thống kê real-time</div>
+        <div class="feat-desc">
+          Theo dõi lượt xem, lượt tim, lịch sử quà tặng và tổng diamond
+          nhận được trong toàn bộ buổi live chỉ trong một màn hình.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="container">
+    <div class="section-label">Cách sử dụng</div>
+    <h2 class="section-title">Bắt đầu trong 3 bước</h2>
+    <p class="section-sub">Không cần cài đặt phức tạp — chỉ cần trình duyệt và OBS.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-title">Đăng nhập</div>
+        <div class="step-desc">Dùng tài khoản được cấp để vào trang quản lý phòng live.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-title">Kết nối TikTok</div>
+        <div class="step-desc">Nhập ID TikTok đang live, hệ thống tự động kết nối và nhận sự kiện.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-title">Thêm vào OBS</div>
+        <div class="step-desc">Copy link overlay, thêm vào OBS Browser Source — là xong!</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-title">Livestream</div>
+        <div class="step-desc">Tận hưởng buổi live chuyên nghiệp với đầy đủ hiệu ứng đẳng cấp.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="container">
+    <div class="contact-section">
+      <div class="section-label">Liên hệ</div>
+      <h2 class="contact-title">Cần hỗ trợ? Liên hệ ngay</h2>
+      <p class="contact-sub">Tôi luôn sẵn sàng hỗ trợ — phản hồi nhanh qua Zalo hoặc Facebook.</p>
+
+      <div class="contact-cards">
+        <a href="https://zalo.me/0964918976" target="_blank" rel="noopener" class="contact-card">
+          <div class="contact-card-icon icon-zalo">💬</div>
+          <div class="contact-card-info">
+            <div class="contact-card-label">Zalo</div>
+            <div class="contact-card-value">0964 918 976</div>
+          </div>
+        </a>
+        <a href="https://www.facebook.com/duy.trinh.07" target="_blank" rel="noopener" class="contact-card">
+          <div class="contact-card-icon icon-fb">📘</div>
+          <div class="contact-card-info">
+            <div class="contact-card-label">Facebook</div>
+            <div class="contact-card-value">Duy Trinh</div>
+          </div>
+        </a>
+      </div>
+
+      <a href="/login" class="btn-cta">
+        🚀 Đăng nhập ngay
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<hr class="divider" />
+<footer>
+  <div class="footer-inner">
+    <span class="footer-logo">🎙️ TikTok Live Studio</span>
+    <span class="footer-copy">© 2025 Duy Trinh. All rights reserved.</span>
+    <div class="footer-links">
+      <a href="/login">Đăng nhập</a>
+      <a href="https://zalo.me/0964918976" target="_blank" rel="noopener">Zalo</a>
+      <a href="https://www.facebook.com/duy.trinh.07" target="_blank" rel="noopener">Facebook</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Smooth scroll cho nav links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const id = a.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+  });
+
+  // Nếu đã đăng nhập, đổi nút "Đăng nhập" → "Vào ứng dụng"
+  fetch('/api/me').then(r => r.json()).then(d => {
+    if (!d.username) return;
+    const target = d.role === 'admin' ? '/admin' : `/?room=${d.roomId}`;
+    document.querySelectorAll('a[href="/login"]').forEach(el => {
+      el.href    = target;
+      el.textContent = el.classList.contains('btn-cta')
+        ? '🚀 Vào ứng dụng' : 'Vào ứng dụng';
+    });
+  }).catch(() => {});
+</script>
+</body>
+</html>
