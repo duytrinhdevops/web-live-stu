@@ -15,7 +15,7 @@ echo "==> Pull code mới nhất..."
 git pull
 
 echo "==> Chuẩn bị thư mục data..."
-mkdir -p data/configs data/presets
+mkdir -p data/configs data/presets data/uploads
 
 # Tạo users.json mặc định nếu chưa có
 if [ ! -f data/users.json ]; then

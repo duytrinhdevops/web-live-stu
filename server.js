@@ -12,13 +12,15 @@ const speechTranslate  = require("./modules/speech_translate");
 
 const app    = express();
 const server = http.createServer(app);
-const io     = new Server(server);
+const io     = new Server(server, { maxHttpBufferSize: 10 * 1024 * 1024 }); // 10MB
 
 const CONFIG_DIR  = path.join(__dirname, "configs");
 const PRESET_DIR  = path.join(__dirname, "presets");
 const USERS_FILE  = path.join(__dirname, "users.json");
-if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR);
-if (!fs.existsSync(PRESET_DIR)) fs.mkdirSync(PRESET_DIR);
+const UPLOADS_DIR = path.join(__dirname, "public", "uploads");
+if (!fs.existsSync(CONFIG_DIR))  fs.mkdirSync(CONFIG_DIR,  { recursive: true });
+if (!fs.existsSync(PRESET_DIR))  fs.mkdirSync(PRESET_DIR,  { recursive: true });
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -742,14 +744,31 @@ app.post("/room/:roomId/jar-control/effect-reset", (req, res) => {
   res.json({ success: true });
 });
 
+// Lưu base64 data URL thành file vật lý, trả về URL path để phục vụ tĩnh
+// Nếu value đã là URL path (không phải base64), giữ nguyên
+function saveImageFile(base64DataUrl, filename) {
+  if (!base64DataUrl || typeof base64DataUrl !== "string") return null;
+  // Đã là URL path rồi (không phải data URL) — giữ nguyên
+  if (!base64DataUrl.startsWith("data:")) return base64DataUrl;
+  const m = base64DataUrl.match(/^data:image\/(\w+);base64,(.+)$/s);
+  if (!m) return null;
+  const ext  = m[1].toLowerCase().replace("jpeg", "jpg");
+  const data = Buffer.from(m[2], "base64");
+  const file = `${filename}.${ext}`;
+  fs.writeFileSync(path.join(UPLOADS_DIR, file), data);
+  return `/uploads/${file}`;
+}
+
 app.post("/room/:roomId/jar-control/upload-image", (req, res) => {
   const room = requireRoom(req, res); if (!room) return;
   const { imageUrl } = req.body || {};
   if (!imageUrl || typeof imageUrl !== "string") return res.status(400).json({ success: false, message: "imageUrl required" });
-  room.state.jarImageUrl = imageUrl;
-  io.to(req.params.roomId).emit("jarImageUpdated", { imageUrl });
+  const servePath = saveImageFile(imageUrl, `jar_${req.params.roomId}`);
+  if (!servePath) return res.status(400).json({ success: false, message: "Dữ liệu ảnh không hợp lệ" });
+  room.state.jarImageUrl = servePath;
+  io.to(req.params.roomId).emit("jarImageUpdated", { imageUrl: servePath });
   saveRoomConfig(req.params.roomId);
-  res.json({ success: true, imageUrl });
+  res.json({ success: true, imageUrl: servePath });
 });
 
 app.post("/room/:roomId/jar-control/sticker-image", (req, res) => {
@@ -758,10 +777,12 @@ app.post("/room/:roomId/jar-control/sticker-image", (req, res) => {
   const idx = getStickerIndex(index, room);
   if (idx < 0) return res.status(400).json({ success: false, message: "invalid sticker index" });
   if (typeof imageUrl !== "string") return res.status(400).json({ success: false, message: "imageUrl required" });
-  room.state.stickers[idx].imageUrl = imageUrl || null;
-  io.to(req.params.roomId).emit("stickerImageUpdated", { index: idx, imageUrl: room.state.stickers[idx].imageUrl });
+  const servePath = saveImageFile(imageUrl, `sticker_${req.params.roomId}_${idx}`);
+  if (imageUrl && !servePath) return res.status(400).json({ success: false, message: "Dữ liệu ảnh không hợp lệ" });
+  room.state.stickers[idx].imageUrl = servePath;
+  io.to(req.params.roomId).emit("stickerImageUpdated", { index: idx, imageUrl: servePath });
   saveRoomConfig(req.params.roomId);
-  res.json({ success: true });
+  res.json({ success: true, imageUrl: servePath });
 });
 
 app.post("/room/:roomId/jar-control/sticker-set", (req, res) => {

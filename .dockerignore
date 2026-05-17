@@ -6,4 +6,5 @@ configs/
 presets/
 users.json
 data/
+public/uploads/
 .env

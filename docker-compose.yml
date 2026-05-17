@@ -10,6 +10,7 @@ services:
     volumes:
       - ./data/configs:/app/configs
       - ./data/presets:/app/presets
+      - ./data/uploads:/app/public/uploads
       - ./data/users.json:/app/users.json
     environment:
       - BEHIND_PROXY=${BEHIND_PROXY:-0}
