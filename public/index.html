@@ -294,6 +294,10 @@
         <input id="slGiftSize" type="range" min="40" max="180" value="100" step="1" oninput="onEffectSlider('giftSize', this)">
       </div>
       <div class="row">
+        <span>Tốc độ rơi</span>
+        <input id="slGiftGravity" type="range" min="10" max="300" value="100" step="5" oninput="onEffectSlider('giftGravity', this)">
+      </div>
+      <div class="row">
         <span>Khoảng cách (độ nảy)</span>
         <input id="slGiftBounce" type="range" min="0" max="35" value="2" step="1" oninput="onEffectSlider('giftBounce', this)">
       </div>
@@ -784,13 +788,13 @@
         allX: 'slAllX', allY: 'slAllY', allScale: 'slAllScale',
         jarWidth: 'slJarWidth', jarHeight: 'slJarHeight', jarX: 'slJarX', jarY: 'slJarY',
         giftWidth: 'slGiftWidth', giftHeight: 'slGiftHeight', giftX: 'slGiftX', giftY: 'slGiftY',
-        giftSize: 'slGiftSize', giftBounce: 'slGiftBounce', giftFriction: 'slGiftFriction', giftSpacing: 'slGiftSpacing',
+        giftSize: 'slGiftSize', giftGravity: 'slGiftGravity', giftBounce: 'slGiftBounce', giftFriction: 'slGiftFriction', giftSpacing: 'slGiftSpacing',
         mouthOpacity: 'slMouthOpacity', mouthX: 'slMouthX', mouthY: 'slMouthY', mouthScale: 'slMouthScale'
       };
       return map[control];
     }
 
-    const DIVIDE_BY_100 = new Set(['allScale','jarWidth','jarHeight','giftWidth','giftHeight','giftSize','giftBounce','giftFriction','giftSpacing','mouthOpacity','mouthScale']);
+    const DIVIDE_BY_100 = new Set(['allScale','jarWidth','jarHeight','giftWidth','giftHeight','giftSize','giftGravity','giftBounce','giftFriction','giftSpacing','mouthOpacity','mouthScale']);
 
     function normalizeValue(control, rawValue) {
       return DIVIDE_BY_100.has(control) ? rawValue / 100 : rawValue;
@@ -1073,6 +1077,7 @@
       if (state.giftBounce  !== undefined) setSliderValue('giftBounce',  state.giftBounce);
       if (state.giftFriction !== undefined) setSliderValue('giftFriction', state.giftFriction);
       if (state.giftSpacing  !== undefined) setSliderValue('giftSpacing',  state.giftSpacing);
+      if (state.giftGravity  !== undefined) setSliderValue('giftGravity',  state.giftGravity);
       if (state.mouthOpacity !== undefined) setSliderValue('mouthOpacity', state.mouthOpacity);
       if (state.jarImageUrl) document.getElementById('jarImageStatus').textContent = '✓ Đã thêm';
       if (Array.isArray(state.stickers)) {

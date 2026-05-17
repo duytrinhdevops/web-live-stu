@@ -164,7 +164,7 @@ function defaultState() {
     allX: 0, allY: 0, allScale: 1,
     jarWidth: 1, jarHeight: 1, jarBaseX: 0, jarBaseY: 0, jarImageUrl: null,
     giftWidth: 1, giftHeight: 1, giftBaseX: 0, giftBaseY: 0,
-    giftSize: 1, giftBounce: 0.02, giftFriction: 0.6, giftSpacing: 0,
+    giftSize: 1, giftBounce: 0.02, giftFriction: 0.6, giftSpacing: 0, giftGravity: 1,
     mouthOpacity: 0, mouthX: 0, mouthY: 0, mouthScale: 1,
     // Alert
     alertMinDiamonds: 50, alertFollows: true, alertSound: true,
@@ -720,6 +720,7 @@ app.post("/room/:roomId/jar-control/effect-set", (req, res) => {
   if (control === "giftBounce")  s.giftBounce  = v;
   if (control === "giftFriction") s.giftFriction = v;
   if (control === "giftSpacing")  s.giftSpacing  = v;
+  if (control === "giftGravity")  s.giftGravity  = v;
   if (control === "mouthOpacity") s.mouthOpacity = v;
   if (control === "mouthX")      s.mouthX      = v;
   if (control === "mouthY")      s.mouthY      = v;

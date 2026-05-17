@@ -639,6 +639,7 @@
         });
       }
 
+      if (state.giftGravity      !== undefined) engine.gravity.y = clamp(state.giftGravity, 0.1, 3.0);
       if (state.giftSoundVolume  !== undefined) giftSoundVolume  = state.giftSoundVolume;
       if (state.giftCustomSounds)               giftCustomSounds = { ...state.giftCustomSounds };
       syncUI(); updatePosDisplay(); buildJarWalls();
@@ -665,6 +666,7 @@
       gift.width = 1; gift.height = 1;
       gift.x     = 0; gift.y     = 0;
       gift.size  = 1; gift.bounce = 0.02; gift.friction = 0.6; gift.spacing = 0;
+      engine.gravity.y = 1.0;
       allScale = 1.0;
       mouthOpacity = 0; mouthX = 0; mouthY = 0; mouthScale = 1.0;
       syncUI(); updatePosDisplay(); buildJarWalls();
@@ -698,6 +700,7 @@
       if (control === 'mouthX')        mouthX       = clamp(v, -400, 400);
       if (control === 'mouthY')        mouthY       = clamp(v, -400, 400);
       if (control === 'mouthScale')    mouthScale   = clamp(v, 0.2, 3.0);
+      if (control === 'giftGravity')   engine.gravity.y = clamp(v, 0.1, 3.0);
 
       syncUI(); updatePosDisplay(); buildJarWalls();
     });
