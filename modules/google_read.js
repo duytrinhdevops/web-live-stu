@@ -9,21 +9,68 @@ const DEFAULT_STATE = {
   ttsReplacements: []
 };
 
-// Emoji ranges: emoticons, misc symbols, dingbats, supplemental symbols, etc.
+// Emoji / symbol unicode ranges (u flag required for \u{XXXXX} syntax)
 const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2300}-\u{27BF}\u{FE00}-\u{FEFF}\u{200D}\u{20D0}-\u{20FF}]/gu;
+
+// TikTok @mentions use ASCII-only usernames.
+// \S+ would eat Vietnamese words when TikTok inserts U+00A0 (non-breaking space)
+// instead of a regular space after the @username.
+const MENTION_RE = /@[a-zA-Z0-9_.]+/g;
+
+// Build regex for exotic/non-breaking whitespace chars using code points so the
+// source file stays ASCII and avoids invisible char encoding issues.
+// Covers: U+00A0 NBSP, U+1680 Ogham, U+2000-U+200A various, U+202F narrow NBSP,
+//         U+205F math space, U+3000 ideographic space.
+function _cp(n) { return String.fromCharCode(n); }
+function _range(a, b) { return _cp(a) + "-" + _cp(b); }
+const EXOTIC_SPACE_RE = new RegExp(
+  "[" +
+  _cp(0x00A0) +         // NO-BREAK SPACE
+  _cp(0x1680) +         // OGHAM SPACE MARK
+  _range(0x2000, 0x200A) + // EN QUAD ... HAIR SPACE
+  _cp(0x202F) +         // NARROW NO-BREAK SPACE
+  _cp(0x205F) +         // MEDIUM MATHEMATICAL SPACE
+  _cp(0x3000) +         // IDEOGRAPHIC SPACE
+  "]",
+  "g"
+);
+
+// Zero-width and invisible control chars that cause TTS glitches.
+// Covers: U+200B-U+200F ZW/directional, U+2028-U+202E separators/bidi,
+//         U+2060-U+206F word joiners, U+FEFF BOM.
+const INVISIBLE_RE = new RegExp(
+  "[" +
+  _range(0x200B, 0x200F) + // ZERO WIDTH SPACE ... RIGHT-TO-LEFT MARK
+  _range(0x2028, 0x202E) + // LINE SEPARATOR ... RIGHT-TO-LEFT OVERRIDE
+  _range(0x2060, 0x206F) + // WORD JOINER ... INVISIBLE PLUS SIGN
+  _cp(0xFEFF) +             // ZERO WIDTH NO-BREAK SPACE / BOM
+  "]",
+  "g"
+);
 
 function processText(text, state) {
   let t = text;
 
-  // Strip content that causes garbled TTS output
-  t = t.replace(/https?:\/\/\S+/gi, "");          // URLs
-  t = t.replace(/www\.\S+/gi, "");                 // bare www. links
-  t = t.replace(/@\S+/g, "");                      // @mentions
-  t = t.replace(/#\S+/g, "");                      // #hashtags
-  t = t.replace(EMOJI_RE, "");                     // emoji / symbols
-  t = t.replace(/(.)\1{4,}/g, "$1$1");             // collapse spam (aaaaaaa → aa)
+  // NFC normalization: Vietnamese diacritics stored as NFD (base char + separate
+  // combining mark codepoint) cause Google TTS to voice the mark as an extra
+  // vowel -- e.g. NFD "ca`" -> TTS hears "ca a". NFC fuses them into one char.
+  t = t.normalize("NFC");
 
-  // User-defined replacements then skip-words
+  // Normalise exotic whitespace so @mention regex stops at the right boundary
+  t = t.replace(EXOTIC_SPACE_RE, " ");
+
+  // Remove invisible chars that produce unexpected TTS artefacts
+  t = t.replace(INVISIBLE_RE, "");
+
+  // Strip content that produces garbled speech
+  t = t.replace(/https?:\/\/\S+/gi, "");  // full URLs
+  t = t.replace(/www\.\S+/gi,        ""); // bare www. links
+  t = t.replace(MENTION_RE,          ""); // @mentions -- ASCII username only
+  t = t.replace(/#\S+/g,             ""); // #hashtags
+  t = t.replace(EMOJI_RE,            ""); // emoji / symbols
+  t = t.replace(/(.)\1{4,}/gu, "$1$1");  // collapse spam chars (aaaaa -> aa)
+
+  // User-defined replacements, then skip-words
   for (const r of (state.ttsReplacements || [])) {
     if (!r.from) continue;
     t = t.replace(new RegExp(r.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), r.to || "");
@@ -37,14 +84,16 @@ function processText(text, state) {
 }
 
 function register(app, io, getRoom, saveRoomConfig) {
-  // Global proxy — no room needed
+  // Global proxy -- no room needed
   app.get("/tts-audio", (req, res) => {
     const text = String(req.query.text || "").trim().slice(0, 200);
     const lang = String(req.query.lang || "vi");
     if (!text) return res.status(400).end();
     const ttsUrl =
       "https://translate.google.com/translate_tts" +
-      `?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${encodeURIComponent(lang)}&client=tw-ob&ttsspeed=1`;
+      "?ie=UTF-8&q=" + encodeURIComponent(text) +
+      "&tl=" + encodeURIComponent(lang) +
+      "&client=tw-ob&ttsspeed=1";
     const proxyReq = https.get(ttsUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
