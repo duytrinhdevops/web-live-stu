@@ -550,6 +550,14 @@ app.post("/admin/rooms/:roomId/import", mwAdmin, express.json({ limit: "20mb" })
   res.json({ success: true });
 });
 
+// Fields that belong to live session state, not to visual presets.
+// Excluded when saving a preset and ignored when applying one.
+const PRESET_OMIT = new Set([
+  'tiktokUniqueId',
+  'ttsEnabled', 'ttsVolume', 'ttsRate', 'ttsLang', 'ttsSkipWords', 'ttsReplacements',
+  'goalCurrent',
+]);
+
 // ── Preset routes ────────────────────────────────────────────────────────
 
 app.get("/presets", mwAuth, (req, res) => {
@@ -596,6 +604,7 @@ app.post("/room/:roomId/apply-preset", (req, res) => {
   try { preset = JSON.parse(fs.readFileSync(filePath, "utf8")); }
   catch { return res.status(400).json({ error: "Invalid JSON" }); }
   delete preset._name;
+  for (const f of PRESET_OMIT) delete preset[f];
   Object.assign(room.state, preset);
   applyAllOffset(room);
   saveRoomConfig(req.params.roomId);
@@ -608,8 +617,9 @@ app.post("/admin/presets/save", mwAdmin, (req, res) => {
   if (!filename || !/^[\w\-. ]+\.json$/.test(filename))
     return res.status(400).json({ error: "Invalid filename" });
   const room = roomId ? getRoom(roomId) : null;
-  const state = room ? { ...room.state, _name: label || filename.replace(/\.json$/, "") }
-                     : { _name: label || filename.replace(/\.json$/, "") };
+  const base = room ? { ...room.state } : {};
+  for (const f of PRESET_OMIT) delete base[f];
+  const state = { ...base, _name: label || filename.replace(/\.json$/, "") };
   fs.writeFileSync(path.join(PRESET_DIR, filename), JSON.stringify(state, null, 2));
   res.json({ success: true });
 });
