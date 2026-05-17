@@ -7,4 +7,5 @@ presets/
 users.json
 data/
 public/uploads/
+nginx/
 .env

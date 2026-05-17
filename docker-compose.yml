@@ -5,12 +5,35 @@ services:
     build: .
     container_name: web_live_stu
     restart: unless-stopped
-    ports:
-      - "80:3000"
+    expose:
+      - "3000"
     volumes:
       - ./data/configs:/app/configs
       - ./data/presets:/app/presets
       - ./data/uploads:/app/public/uploads
       - ./data/users.json:/app/users.json
     environment:
-      - BEHIND_PROXY=${BEHIND_PROXY:-0}
+      - BEHIND_PROXY=1
+
+  nginx:
+    image: nginx:alpine
+    container_name: web_live_stu_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./data/certbot/conf:/etc/letsencrypt:ro
+      - ./data/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - app
+
+  certbot:
+    image: certbot/certbot
+    container_name: web_live_stu_certbot
+    restart: unless-stopped
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
