@@ -30,17 +30,7 @@
     button:active { opacity: .7; }
     #btnPlay { background: #7c3aed; color: #fff; }
     #btnStop { background: #dc2626; color: #fff; }
-    .info-box {
-      margin-top: 14px; padding: 12px 14px; background: #0f3460;
-      border-radius: 8px; font-size: 13px; line-height: 1.8;
-    }
-    .lbl { color: #a78bfa; font-weight: 600; margin-bottom: 4px; display: block; }
-    #status    { margin-top: 12px; font-size: 13px; min-height: 20px; }
-    #segments  { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-    .seg-vi    { background: #1e3a5f; padding: 3px 8px; border-radius: 4px; color: #93c5fd; }
-    .seg-en    { background: #3b2d5c; padding: 3px 8px; border-radius: 4px; color: #c4b5fd; }
-    .seg-vi::before { content: "VI "; font-size: 10px; opacity: .6; }
-    .seg-en::before { content: "EN "; font-size: 10px; opacity: .6; }
+    #status { margin-top: 12px; font-size: 13px; min-height: 20px; }
     .hint { font-size: 12px; color: #4b5563; margin-top: 10px; }
   </style>
 </head>
@@ -48,11 +38,11 @@
   <h2>&#128266; Test Google TTS</h2>
 
   <label>Van ban (Ctrl+Enter de phat):</label>
-  <textarea id="txt" placeholder="Vi du: ban co cute khong, nice to meet you, xin chao moi nguoi..."></textarea>
+  <textarea id="txt" placeholder="Vi du: ban co cute khong, xin chao moi nguoi..."></textarea>
 
   <div class="row">
     <div class="field">
-      <label>Ngon ngu chinh</label>
+      <label>Ngon ngu</label>
       <select id="lang">
         <option value="vi">Tieng Viet (vi)</option>
         <option value="en">English (en)</option>
@@ -80,22 +70,14 @@
   </div>
 
   <div id="status"></div>
-
-  <div class="info-box" id="infoBox" style="display:none">
-    <span class="lbl">Phan doan TTS (xanh = Tieng Viet, tim = English):</span>
-    <div id="segments"></div>
-  </div>
-
-  <p class="hint">Ctrl+Enter de phat. Tu tieng Anh 3+ ky tu duoc tach rieng va doc bang giong EN.</p>
+  <p class="hint">Ctrl+Enter de phat.</p>
 
   <script>
-    var _ac   = null;
-    var _srcs = [];   // list of scheduled sources for stop()
-    var _queue = [];  // [{text, lang, vol, rate}]
-    var _playing = false;
+    var _ac  = null;
+    var _src = null;
 
-    function cp(n)   { return String.fromCharCode(n); }
-    function rng(a,b){ return cp(a) + '-' + cp(b); }
+    function cp(n)    { return String.fromCharCode(n); }
+    function rng(a,b) { return cp(a) + '-' + cp(b); }
     var EXOTIC_SP = new RegExp('['+cp(0xA0)+cp(0x1680)+rng(0x2000,0x200A)+cp(0x202F)+cp(0x205F)+cp(0x3000)+']','g');
     var INVISIBLE  = new RegExp('['+rng(0x200B,0x200F)+rng(0x2028,0x202E)+rng(0x2060,0x206F)+cp(0xFEFF)+']','g');
     var EMOJI_RE   = /[\u{1F300}-\u{1FAFF}\u{2300}-\u{27BF}\u{FE00}-\u{FEFF}\u{200D}\u{20D0}-\u{20FF}]/gu;
@@ -113,96 +95,10 @@
     }
 
     function stopAll() {
-      _queue = [];
-      _playing = false;
-      _srcs.forEach(function(s){ try { s.stop(); } catch(e){} });
-      _srcs = [];
+      if (_src) { try { _src.stop(); } catch(e){} _src = null; }
       setStatus('Da dung.', '#9ca3af');
     }
 
-    async function playSegment(seg) {
-      var url = '/tts-audio?text=' + encodeURIComponent(seg.text) + '&lang=' + encodeURIComponent(seg.lang);
-      var resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      var buf  = await resp.arrayBuffer();
-      if (!buf.byteLength) throw new Error('Audio rong');
-
-      var ac      = getAc();
-      await ac.resume();
-      var audioBuf = await ac.decodeAudioData(buf);
-
-      var src  = ac.createBufferSource();
-      src.buffer = audioBuf;
-      src.playbackRate.value = Math.min(4, Math.max(0.25, seg.rate / 100));
-
-      var gain = ac.createGain();
-      gain.gain.value = seg.vol / 100;
-
-      var comp = ac.createDynamicsCompressor();
-      comp.threshold.value = -12; comp.knee.value = 6;
-      comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.1;
-
-      src.connect(gain); gain.connect(comp); comp.connect(ac.destination);
-      _srcs.push(src);
-
-      return new Promise(function(resolve) {
-        src.onended = function() {
-          _srcs = _srcs.filter(function(s){ return s !== src; });
-          resolve();
-        };
-        src.start();
-      });
-    }
-
-    async function drainQueue() {
-      if (_playing) return;
-      _playing = true;
-      while (_queue.length > 0) {
-        var seg = _queue.shift();
-        setStatus('Dang phat [' + seg.lang.toUpperCase() + ']: ' + seg.text, '#6ee7b7');
-        try { await playSegment(seg); } catch(e) { setStatus('Loi: ' + e.message, '#f87171'); }
-        await new Promise(function(r){ setTimeout(r, 80); }); // small gap between segments
-      }
-      _playing = false;
-      if (_srcs.length === 0) setStatus('Phat xong.', '#6ee7b7');
-    }
-
-    async function play() {
-      stopAll();
-      var raw = document.getElementById('txt').value.trim();
-      if (!raw) { setStatus('Nhap van ban truoc!', '#f87171'); return; }
-
-      var processed = processText(raw);
-      var lang   = document.getElementById('lang').value;
-      var vol    = Number(document.getElementById('vol').value);
-      var rate   = Number(document.getElementById('rate').value);
-
-      var segments = splitByLang(processed, lang);
-
-      // Show segments
-      var segsEl = document.getElementById('segments');
-      segsEl.innerHTML = '';
-      if (!segments.length) {
-        document.getElementById('infoBox').style.display = 'none';
-        setStatus('Text trong sau khi loc.', '#f87171');
-        return;
-      }
-      segments.forEach(function(s) {
-        var span = document.createElement('span');
-        span.className = s.lang === 'en' ? 'seg-en' : 'seg-vi';
-        span.textContent = s.text;
-        segsEl.appendChild(span);
-      });
-      document.getElementById('infoBox').style.display = 'block';
-
-      // Enqueue and play
-      segments.forEach(function(s) {
-        _queue.push({ text: s.text, lang: s.lang, vol: vol, rate: rate });
-      });
-      drainQueue();
-    }
-
-    // Mirror server processText
     function processText(text) {
       var t = text.normalize('NFC');
       t = t.replace(EXOTIC_SP, ' ');
@@ -216,22 +112,49 @@
       return t.replace(/\s+/g, ' ').trim();
     }
 
-    // Mirror server splitByLang
-    function splitByLang(text, baseLang) {
-      if (baseLang !== 'vi') return [{ text: text, lang: baseLang }];
-      var parts = text.split(/(\b[a-zA-Z]{3,}\b)/g);
-      var raw = parts.map(function(t, i) {
-        return { text: t.replace(/\s+/g, ' ').trim(), lang: i % 2 === 1 ? 'en' : 'vi' };
-      }).filter(function(s){ return s.text; });
-      var merged = [];
-      raw.forEach(function(s) {
-        if (merged.length && merged[merged.length-1].lang === s.lang) {
-          merged[merged.length-1].text += ' ' + s.text;
-        } else {
-          merged.push({ text: s.text, lang: s.lang });
-        }
-      });
-      return merged.filter(function(s){ return s.text.trim(); });
+    async function play() {
+      stopAll();
+      var raw = document.getElementById('txt').value.trim();
+      if (!raw) { setStatus('Nhap van ban truoc!', '#f87171'); return; }
+
+      var text = processText(raw);
+      if (!text) { setStatus('Text trong sau khi loc.', '#f87171'); return; }
+
+      var lang = document.getElementById('lang').value;
+      var vol  = Number(document.getElementById('vol').value);
+      var rate = Number(document.getElementById('rate').value);
+
+      setStatus('Dang tai...', '#facc15');
+      try {
+        var url  = '/tts-audio?text=' + encodeURIComponent(text) + '&lang=' + encodeURIComponent(lang);
+        var resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        var buf  = await resp.arrayBuffer();
+        if (!buf.byteLength) throw new Error('Audio rong');
+
+        var ac       = getAc();
+        await ac.resume();
+        var audioBuf = await ac.decodeAudioData(buf);
+
+        var src  = ac.createBufferSource();
+        src.buffer = audioBuf;
+        src.playbackRate.value = Math.min(4, Math.max(0.25, rate / 100));
+
+        var gain = ac.createGain();
+        gain.gain.value = vol / 100;
+
+        var comp = ac.createDynamicsCompressor();
+        comp.threshold.value = -12; comp.knee.value = 6;
+        comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.1;
+
+        src.connect(gain); gain.connect(comp); comp.connect(ac.destination);
+        _src = src;
+        src.onended = function() { _src = null; setStatus('Phat xong.', '#6ee7b7'); };
+        src.start();
+        setStatus('Dang phat...', '#6ee7b7');
+      } catch(e) {
+        setStatus('Loi: ' + e.message, '#f87171');
+      }
     }
 
     document.getElementById('txt').addEventListener('keydown', function(e) {
