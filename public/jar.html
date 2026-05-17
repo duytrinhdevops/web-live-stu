@@ -560,12 +560,41 @@
       return '1';
     }
 
+    // Master compressor — allows gain > 1.0 without harsh clipping
+    function getMasterOut(ac) {
+      if (!ac._masterComp) {
+        const c = ac.createDynamicsCompressor();
+        c.threshold.value = -12;
+        c.knee.value = 6;
+        c.ratio.value = 4;
+        c.attack.value = 0.003;
+        c.release.value = 0.1;
+        c.connect(ac.destination);
+        ac._masterComp = c;
+      }
+      return ac._masterComp;
+    }
+
     function playCustomSound(dataUrl, vol) {
       try {
+        // Route through Web Audio so gain can exceed 1.0
+        const ac    = getAudioCtx();
         const audio = new Audio(dataUrl);
-        audio.volume = Math.min(1, Math.max(0, vol / 100));
+        audio.crossOrigin = 'anonymous';
+        const src  = ac.createMediaElementSource(audio);
+        const gain = ac.createGain();
+        gain.gain.value = Math.max(0, vol / 100);
+        src.connect(gain);
+        gain.connect(getMasterOut(ac));
         audio.play().catch(() => {});
-      } catch {}
+        audio.onended = () => { try { src.disconnect(); gain.disconnect(); } catch {} };
+      } catch {
+        try {
+          const audio = new Audio(dataUrl);
+          audio.volume = Math.min(1, Math.max(0, vol / 100));
+          audio.play().catch(() => {});
+        } catch {}
+      }
     }
 
     function playGiftSound(diamonds){
@@ -578,9 +607,10 @@
         const osc  = ac.createOscillator();
         const gain = ac.createGain();
         osc.connect(gain);
-        gain.connect(ac.destination);
+        gain.connect(getMasterOut(ac));
         const t  = ac.currentTime;
-        const vM = vol / 100;
+        // 100% slider -> vM=2.0: Web Audio supports gain>1, compressor handles peaks
+        const vM = (vol / 100) * 2;
 
         if (diamonds >= 500){
           osc.type = 'triangle';
@@ -588,30 +618,30 @@
           osc.frequency.setValueAtTime(659, t + 0.08);
           osc.frequency.setValueAtTime(784, t + 0.16);
           osc.frequency.setValueAtTime(1047, t + 0.24);
-          gain.gain.setValueAtTime(0.35 * vM, t);
+          gain.gain.setValueAtTime(1.0 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
           osc.start(t); osc.stop(t + 0.6);
         } else if (diamonds >= 50){
           osc.type = 'sine';
           osc.frequency.setValueAtTime(660, t);
           osc.frequency.exponentialRampToValueAtTime(880, t + 0.12);
-          gain.gain.setValueAtTime(0.25 * vM, t);
+          gain.gain.setValueAtTime(0.8 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
           osc.start(t); osc.stop(t + 0.3);
         } else if (diamonds >= 5){
           osc.type = 'sine';
           osc.frequency.setValueAtTime(440, t);
-          gain.gain.setValueAtTime(0.12 * vM, t);
+          gain.gain.setValueAtTime(0.6 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
           osc.start(t); osc.stop(t + 0.15);
         } else {
           osc.type = 'sine';
           osc.frequency.setValueAtTime(330, t);
-          gain.gain.setValueAtTime(0.05 * vM, t);
+          gain.gain.setValueAtTime(0.4 * vM, t);
           gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
           osc.start(t); osc.stop(t + 0.08);
         }
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch {} };
       } catch {}
     }
 
