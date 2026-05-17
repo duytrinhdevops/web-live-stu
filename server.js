@@ -356,6 +356,11 @@ async function connectRoom(roomId, uniqueId) {
 
   conn.on("gift", data => {
     if (room.connection !== conn) return;
+    // giftType 1 = streak/combo gifts. TikTok fires one event per combo update
+    // (repeatEnd=false) PLUS a final confirmation event (repeatEnd=true).
+    // Only process the final event to avoid double-counting and double-dropping.
+    if (data.giftType === 1 && !data.repeatEnd) return;
+
     const gift     = data.giftName || "quà";
     const count    = data.repeatCount || 1;
     const user     = data.nickname || data.uniqueId || data.userDetails?.nickname || data.userDetails?.uniqueId || "Unknown";

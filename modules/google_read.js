@@ -9,8 +9,21 @@ const DEFAULT_STATE = {
   ttsReplacements: []
 };
 
+// Emoji ranges: emoticons, misc symbols, dingbats, supplemental symbols, etc.
+const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2300}-\u{27BF}\u{FE00}-\u{FEFF}\u{200D}\u{20D0}-\u{20FF}]/gu;
+
 function processText(text, state) {
   let t = text;
+
+  // Strip content that causes garbled TTS output
+  t = t.replace(/https?:\/\/\S+/gi, "");          // URLs
+  t = t.replace(/www\.\S+/gi, "");                 // bare www. links
+  t = t.replace(/@\S+/g, "");                      // @mentions
+  t = t.replace(/#\S+/g, "");                      // #hashtags
+  t = t.replace(EMOJI_RE, "");                     // emoji / symbols
+  t = t.replace(/(.)\1{4,}/g, "$1$1");             // collapse spam (aaaaaaa → aa)
+
+  // User-defined replacements then skip-words
   for (const r of (state.ttsReplacements || [])) {
     if (!r.from) continue;
     t = t.replace(new RegExp(r.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), r.to || "");
@@ -19,6 +32,7 @@ function processText(text, state) {
     if (!w) continue;
     t = t.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "");
   }
+
   return t.replace(/\s+/g, " ").trim();
 }
 
