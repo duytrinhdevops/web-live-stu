@@ -7,176 +7,188 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Segoe UI, sans-serif; background: #1a1a2e; color: #eee; padding: 30px; }
     h2 { margin-bottom: 20px; color: #a78bfa; }
-    label { display: block; margin-bottom: 6px; font-size: 13px; color: #aaa; }
+    label { display: block; margin-bottom: 5px; font-size: 13px; color: #aaa; }
     textarea {
-      width: 100%; height: 100px; padding: 10px; font-size: 15px;
+      width: 100%; height: 110px; padding: 10px; font-size: 15px;
       background: #16213e; border: 1px solid #444; border-radius: 8px;
       color: #fff; resize: vertical; outline: none;
     }
     textarea:focus { border-color: #a78bfa; }
-    .row { display: flex; gap: 12px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-    select, input[type=range] {
+    .row { display: flex; gap: 16px; align-items: flex-end; margin-top: 14px; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    select {
       background: #16213e; border: 1px solid #444; border-radius: 6px;
-      color: #eee; padding: 6px 10px; font-size: 14px; outline: none;
+      color: #eee; padding: 7px 10px; font-size: 14px; outline: none;
     }
+    .slider-row { display: flex; align-items: center; gap: 8px; }
+    input[type=range] { accent-color: #a78bfa; width: 130px; }
+    .val { min-width: 44px; font-size: 13px; color: #c4b5fd; }
     button {
       padding: 9px 22px; border: none; border-radius: 8px; font-size: 14px;
       cursor: pointer; font-weight: 600; transition: opacity .15s;
     }
-    button:hover { opacity: .85; }
-    #btnPlay  { background: #7c3aed; color: #fff; }
-    #btnStop  { background: #dc2626; color: #fff; }
-    #btnClear { background: #374151; color: #eee; }
+    button:active { opacity: .7; }
+    #btnPlay { background: #7c3aed; color: #fff; }
+    #btnStop { background: #dc2626; color: #fff; }
     .info-box {
       margin-top: 16px; padding: 12px 14px; background: #0f3460;
-      border-radius: 8px; font-size: 13px; line-height: 1.6;
+      border-radius: 8px; font-size: 13px; line-height: 1.7;
     }
-    .info-box .lbl { color: #a78bfa; font-weight: 600; margin-bottom: 4px; display: block; }
+    .lbl { color: #a78bfa; font-weight: 600; margin-bottom: 3px; display: block; }
     #processed { color: #6ee7b7; word-break: break-all; }
-    #status { margin-top: 12px; font-size: 13px; color: #facc15; min-height: 20px; }
-    .hint { font-size: 12px; color: #666; margin-top: 8px; }
-    .vol-row { display: flex; align-items: center; gap: 10px; }
-    #volVal { min-width: 38px; font-size: 13px; }
-    #rateVal { min-width: 38px; font-size: 13px; }
+    #status { margin-top: 12px; font-size: 13px; min-height: 20px; }
+    .hint { font-size: 12px; color: #555; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <h2>🔊 Test Google TTS</h2>
+  <h2>&#128266; Test Google TTS</h2>
 
-  <label>Nhập văn bản muốn đọc:</label>
-  <textarea id="txt" placeholder="Nhập text tiếng Việt...&#10;Ví dụ: Xin chào, bạn có khoẻ không?"></textarea>
+  <label>Nhap van ban muon doc (Ctrl+Enter de phat):</label>
+  <textarea id="txt" placeholder="Nhap text tieng Viet..."></textarea>
 
   <div class="row">
-    <div>
-      <label>Ngôn ngữ</label>
+    <div class="field">
+      <label>Ngon ngu</label>
       <select id="lang">
-        <option value="vi">Tiếng Việt (vi)</option>
+        <option value="vi">Tieng Viet (vi)</option>
         <option value="en">English (en)</option>
-        <option value="zh-CN">中文 (zh-CN)</option>
+        <option value="zh-CN">Tieng Trung (zh-CN)</option>
       </select>
     </div>
-    <div class="vol-row">
-      <label>Âm lượng</label>
-      <input type="range" id="vol" min="10" max="200" value="100" step="5" oninput="document.getElementById('volVal').textContent=this.value+'%'">
-      <span id="volVal">100%</span>
+    <div class="field">
+      <label>Am luong</label>
+      <div class="slider-row">
+        <input type="range" id="vol" min="10" max="200" value="100" step="5"
+               oninput="document.getElementById('volVal').textContent=this.value+'%'">
+        <span class="val" id="volVal">100%</span>
+      </div>
     </div>
-    <div class="vol-row">
-      <label>Tốc độ</label>
-      <input type="range" id="rate" min="25" max="200" value="100" step="5" oninput="document.getElementById('rateVal').textContent=(this.value/100).toFixed(2)+'×'">
-      <span id="rateVal">1.00×</span>
+    <div class="field">
+      <label>Toc do</label>
+      <div class="slider-row">
+        <input type="range" id="rate" min="25" max="200" value="100" step="5"
+               oninput="document.getElementById('rateVal').textContent=(this.value/100).toFixed(2)+'x'">
+        <span class="val" id="rateVal">1.00x</span>
+      </div>
     </div>
-  </div>
-
-  <div class="row" style="margin-top:16px">
-    <button id="btnPlay" onclick="play()">▶ Phát</button>
-    <button id="btnStop" onclick="stop()">■ Dừng</button>
-    <button id="btnClear" onclick="document.getElementById('txt').value=''">✕ Xoá</button>
+    <button id="btnPlay" onclick="play()">&#9654; Phat</button>
+    <button id="btnStop" onclick="stop()">&#9632; Dung</button>
   </div>
 
   <div id="status"></div>
 
   <div class="info-box" id="infoBox" style="display:none">
-    <span class="lbl">Text gửi đến Google TTS (sau khi xử lý):</span>
+    <span class="lbl">Text thuc su gui toi Google TTS (sau khi loc):</span>
     <span id="processed"></span>
   </div>
 
-  <p class="hint">* Trang này gọi trực tiếp endpoint /tts-audio của server — cùng pipeline với quà tặng live.</p>
+  <p class="hint">* Goi truc tiep /tts-audio - cung pipeline voi live stream.</p>
 
   <script>
-    let _audio = null;
-    let _ac    = null;
-    let _gain  = null;
+    var _ac  = null;
+    var _src = null;
+
+    // Build regex from code points - avoids raw Unicode control chars in source
+    function cp(n)  { return String.fromCharCode(n); }
+    function rng(a,b){ return cp(a) + '-' + cp(b); }
+    // Exotic whitespace: U+00A0 NBSP, U+1680, U+2000-U+200A, U+202F, U+205F, U+3000
+    var EXOTIC_SP = new RegExp('[' + cp(0xA0) + cp(0x1680) + rng(0x2000,0x200A) + cp(0x202F) + cp(0x205F) + cp(0x3000) + ']', 'g');
+    // Invisible: U+200B-U+200F, U+2028-U+202E, U+2060-U+206F, U+FEFF
+    var INVISIBLE  = new RegExp('[' + rng(0x200B,0x200F) + rng(0x2028,0x202E) + rng(0x2060,0x206F) + cp(0xFEFF) + ']', 'g');
+    var EMOJI_RE   = /[\u{1F300}-\u{1FAFF}\u{2300}-\u{27BF}\u{FE00}-\u{FEFF}\u{200D}\u{20D0}-\u{20FF}]/gu;
 
     function getAc() {
-      if (!_ac || _ac.state === 'closed') _ac = new (window.AudioContext || window.webkitAudioContext)();
-      if (_ac.state === 'suspended') _ac.resume();
+      if (!_ac || _ac.state === 'closed')
+        _ac = new (window.AudioContext || window.webkitAudioContext)();
       return _ac;
     }
 
     function setStatus(msg, color) {
-      const el = document.getElementById('status');
+      var el = document.getElementById('status');
       el.textContent = msg;
       el.style.color = color || '#facc15';
     }
 
     function stop() {
-      if (_audio) { _audio.pause(); _audio.src = ''; _audio = null; }
-      if (_gain)  { try { _gain.disconnect(); } catch {} _gain = null; }
-      setStatus('Đã dừng.', '#aaa');
+      if (_src) { try { _src.stop(); } catch(e){} _src = null; }
+      setStatus('Da dung.', '#9ca3af');
     }
 
     async function play() {
       stop();
-      const raw  = document.getElementById('txt').value.trim();
-      if (!raw) { setStatus('Hãy nhập văn bản trước!', '#f87171'); return; }
+      var raw = document.getElementById('txt').value.trim();
+      if (!raw) { setStatus('Nhap van ban truoc!', '#f87171'); return; }
 
-      // Apply same preprocessing as server's processText
-      const processed = clientProcessText(raw);
-      document.getElementById('processed').textContent = processed || '(empty after processing)';
+      var processed = processText(raw);
+      document.getElementById('processed').textContent = processed || '(trong sau khi loc)';
       document.getElementById('infoBox').style.display = 'block';
 
-      if (!processed) { setStatus('Text bị xoá hết sau khi lọc (URL/emoji/mention only?)', '#f87171'); return; }
+      if (!processed) {
+        setStatus('Text bi xoa het sau khi loc (chi co URL/emoji/mention?)', '#f87171');
+        return;
+      }
 
-      const lang    = document.getElementById('lang').value;
-      const volPct  = Number(document.getElementById('vol').value);
-      const ratePct = Number(document.getElementById('rate').value);
-      const url     = `/tts-audio?text=${encodeURIComponent(processed)}&lang=${encodeURIComponent(lang)}`;
+      var lang    = document.getElementById('lang').value;
+      var volPct  = Number(document.getElementById('vol').value);
+      var ratePct = Number(document.getElementById('rate').value);
+      var url     = '/tts-audio?text=' + encodeURIComponent(processed) + '&lang=' + encodeURIComponent(lang);
 
-      setStatus('Đang tải audio...', '#facc15');
+      setStatus('Dang tai audio tu Google...', '#facc15');
+
       try {
-        const ac    = getAc();
-        const audio = new Audio(url);
-        audio.crossOrigin = 'anonymous';
-        _audio = audio;
+        var resp = await fetch(url);
+        if (!resp.ok) throw new Error('Server tra ve HTTP ' + resp.status);
+        var arrayBuf = await resp.arrayBuffer();
+        if (!arrayBuf.byteLength) throw new Error('Audio rong - Google TTS co the bi chan');
 
-        // Compressor + gain (same as jar.html)
-        const comp = ac.createDynamicsCompressor();
-        comp.threshold.value = -12; comp.knee.value = 6;
-        comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.1;
-        comp.connect(ac.destination);
+        var ac = getAc();
+        await ac.resume();
 
-        const src  = ac.createMediaElementSource(audio);
-        const gain = ac.createGain();
+        var audioBuf = await ac.decodeAudioData(arrayBuf);
+
+        var src = ac.createBufferSource();
+        src.buffer = audioBuf;
+        src.playbackRate.value = Math.min(4, Math.max(0.25, ratePct / 100));
+
+        var gain = ac.createGain();
         gain.gain.value = volPct / 100;
+
+        var comp = ac.createDynamicsCompressor();
+        comp.threshold.value = -12;
+        comp.knee.value = 6;
+        comp.ratio.value = 4;
+        comp.attack.value = 0.003;
+        comp.release.value = 0.1;
+
         src.connect(gain);
         gain.connect(comp);
-        _gain = gain;
+        comp.connect(ac.destination);
 
-        audio.playbackRate = Math.min(4, Math.max(0.25, ratePct / 100));
-        audio.onplay    = () => setStatus('▶ Đang phát...', '#6ee7b7');
-        audio.onended   = () => { setStatus('✓ Phát xong.', '#6ee7b7'); _audio = null; };
-        audio.onerror   = () => { setStatus('✗ Lỗi: không lấy được audio từ Google TTS.', '#f87171'); _audio = null; };
+        _src = src;
+        src.onended = function() { setStatus('Phat xong.', '#6ee7b7'); _src = null; };
+        src.start();
+        setStatus('Dang phat...', '#6ee7b7');
 
-        await audio.play();
-      } catch (e) {
-        setStatus('✗ Lỗi: ' + e.message, '#f87171');
+      } catch(err) {
+        setStatus('Loi: ' + err.message, '#f87171');
       }
     }
 
-    // Mirror server's processText so user can see what actually gets sent
-    function clientProcessText(text) {
-      let t = text;
-      t = t.normalize('NFC');
-      // exotic whitespace -> space (U+00A0, U+2000-U+200A, U+202F, U+205F, U+3000)
-      t = t.replace(/[   -   　]/g, ' ');
-      // invisible control chars -> remove
-      t = t.replace(/[​-‏ -‮⁠-⁯﻿]/g, '');
-      // URLs
+    // Mirror server processText
+    function processText(text) {
+      var t = text.normalize('NFC');
+      t = t.replace(EXOTIC_SP, ' ');
+      t = t.replace(INVISIBLE, '');
       t = t.replace(/https?:\/\/\S+/gi, '');
       t = t.replace(/www\.\S+/gi, '');
-      // @mentions (ASCII username only)
       t = t.replace(/@[a-zA-Z0-9_.]+/g, '');
-      // #hashtags
       t = t.replace(/#\S+/g, '');
-      // emoji
-      t = t.replace(/[\u{1F300}-\u{1FAFF}\u{2300}-\u{27BF}\u{FE00}-\u{FEFF}\u{200D}\u{20D0}-\u{20FF}]/gu, '');
-      // spam collapse
+      t = t.replace(EMOJI_RE, '');
       t = t.replace(/(.)\1{4,}/gu, '$1$1');
       return t.replace(/\s+/g, ' ').trim();
     }
 
-    // Allow Ctrl+Enter to play
-    document.getElementById('txt').addEventListener('keydown', e => {
+    document.getElementById('txt').addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); play(); }
     });
   </script>
