@@ -232,6 +232,7 @@
 
     // ── Spawn ─────────────────────────────────────────────────────────────
     function spawnGiftCore(imgSrc, diamonds){
+      if (gifts.length >= MAX_GIFTS) return; // jar full — skip, never remove settled gifts
       const m = mouthCenter();
       const r = diamondRadius(diamonds || 0);
       const physR = Math.max(4, Math.round(r * (1 - gift.spacing * 0.9)));
@@ -284,18 +285,14 @@
       }, DRAIN_MS);
     }
 
-    const MAX_GIFTS = 80;
+    const MAX_GIFTS = 120;
     function pruneGifts(){
+      // Only remove gifts that fell completely out of bounds (escaped the jar)
       for(let i = gifts.length-1; i >= 0; i--){
-        if(gifts[i].body.position.y > VH + 100){
+        if(gifts[i].body.position.y > VH + 150){
           World.remove(world, gifts[i].body);
           gifts.splice(i, 1);
         }
-      }
-      // Remove oldest gifts when over cap to keep physics budget stable
-      while(gifts.length > MAX_GIFTS){
-        World.remove(world, gifts[0].body);
-        gifts.shift();
       }
     }
 
@@ -705,26 +702,29 @@
       const v = Number(value);
       if (!Number.isFinite(v)) return;
 
-      if (control === 'jarWidth')    jar.width    = clamp(v, 0.4, 2.3);
-      if (control === 'jarHeight')   jar.height   = clamp(v, 0.4, 2.3);
-      if (control === 'jarX')        jar.x        = clamp(v, -600, 600);
-      if (control === 'jarY')        jar.y        = clamp(v, -900, 900);
-      if (control === 'giftWidth')   gift.width   = clamp(v, 0.5, 1.8);
-      if (control === 'giftHeight')  gift.height  = clamp(v, 0.5, 1.8);
-      if (control === 'giftX')       gift.x       = clamp(v, -600, 600);
-      if (control === 'giftY')       gift.y       = clamp(v, -900, 900);
+      let needWallRebuild = false;
+
+      if (control === 'jarWidth')    { jar.width    = clamp(v, 0.4, 2.3);  needWallRebuild = true; }
+      if (control === 'jarHeight')   { jar.height   = clamp(v, 0.4, 2.3);  needWallRebuild = true; }
+      if (control === 'jarX')        { jar.x        = clamp(v, -600, 600); needWallRebuild = true; }
+      if (control === 'jarY')        { jar.y        = clamp(v, -900, 900); needWallRebuild = true; }
+      if (control === 'giftWidth')   { gift.width   = clamp(v, 0.5, 1.8);  needWallRebuild = true; }
+      if (control === 'giftHeight')  { gift.height  = clamp(v, 0.5, 1.8);  needWallRebuild = true; }
+      if (control === 'giftX')       { gift.x       = clamp(v, -600, 600); needWallRebuild = true; }
+      if (control === 'giftY')       { gift.y       = clamp(v, -900, 900); needWallRebuild = true; }
+      if (control === 'allScale')    { allScale      = clamp(v, 0.2, 3.0); needWallRebuild = true; }
       if (control === 'giftSize')    gift.size    = clamp(v, 0.4, 1.8);
       if (control === 'giftBounce')  gift.bounce  = clamp(v, 0.0, 0.35);
       if (control === 'giftFriction') gift.friction = clamp(v, 0.1, 1.0);
       if (control === 'giftSpacing')  gift.spacing  = clamp(v, 0.0, 0.8);
-      if (control === 'allScale')     { allScale    = clamp(v, 0.2, 3.0); buildJarWalls(); }
       if (control === 'mouthOpacity')  mouthOpacity = clamp(v, 0.0, 1.0);
       if (control === 'mouthX')        mouthX       = clamp(v, -400, 400);
       if (control === 'mouthY')        mouthY       = clamp(v, -400, 400);
       if (control === 'mouthScale')    mouthScale   = clamp(v, 0.2, 3.0);
       if (control === 'giftGravity')   engine.gravity.y = clamp(v, 0.1, 3.0);
 
-      syncUI(); updatePosDisplay(); buildJarWalls();
+      syncUI(); updatePosDisplay();
+      if (needWallRebuild) buildJarWalls();
     });
 
     socket.on('jarEffectReset', () => { resetEffectControl(); });
