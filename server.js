@@ -142,10 +142,8 @@ function mwRoomOwner(req, res, next) {
 // ── Express setup ─────────────────────────────────────────────────────────
 
 app.use(express.json({ limit: "20mb" }));
-app.use(express.static(path.join(__dirname, "public")));
-app.use("/room/:roomId", mwRoomOwner);
 
-// Route gốc: home page cho khách, control panel cho user đã login
+// Route gốc phải đứng TRƯỚC express.static để không bị index.html che mất
 app.get("/", (req, res) => {
   if (req.query.room) {
     const s = getSessionFromReq(req);
@@ -154,6 +152,9 @@ app.get("/", (req, res) => {
   }
   res.sendFile(path.join(__dirname, "public/home.html"));
 });
+
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/room/:roomId", mwRoomOwner);
 
 // ── Room state ────────────────────────────────────────────────────────────
 
