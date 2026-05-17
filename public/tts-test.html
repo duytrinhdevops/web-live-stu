@@ -105,7 +105,7 @@
       t = t.replace(INVISIBLE, '');
       t = t.replace(/https?:\/\/\S+/gi, '');
       t = t.replace(/www\.\S+/gi, '');
-      t = t.replace(/@[a-zA-Z0-9_.]+/g, '');
+      t = t.replace(/@([a-zA-Z0-9_.]+)/g, '$1');
       t = t.replace(/#\S+/g, '');
       t = t.replace(EMOJI_RE, '');
       t = t.replace(/(.)\1{4,}/gu, '$1$1');

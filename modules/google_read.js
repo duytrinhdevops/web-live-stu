@@ -12,10 +12,9 @@ const DEFAULT_STATE = {
 // Emoji / symbol unicode ranges (u flag required for \u{XXXXX} syntax)
 const EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2300}-\u{27BF}\u{FE00}-\u{FEFF}\u{200D}\u{20D0}-\u{20FF}]/gu;
 
-// TikTok @mentions use ASCII-only usernames.
-// \S+ would eat Vietnamese words when TikTok inserts U+00A0 (non-breaking space)
-// instead of a regular space after the @username.
-const MENTION_RE = /@[a-zA-Z0-9_.]+/g;
+// Strip the @ but keep the username so TTS reads the name after the tag.
+// ASCII-only match stops before Vietnamese text even without a space separator.
+const MENTION_RE = /@([a-zA-Z0-9_.]+)/g;
 
 // Build regex for exotic/non-breaking whitespace chars using code points so the
 // source file stays ASCII and avoids invisible char encoding issues.
@@ -65,19 +64,23 @@ function processText(text, state) {
   // Strip content that produces garbled speech
   t = t.replace(/https?:\/\/\S+/gi, "");  // full URLs
   t = t.replace(/www\.\S+/gi,        ""); // bare www. links
-  t = t.replace(MENTION_RE,          ""); // @mentions -- ASCII username only
+  t = t.replace(MENTION_RE,          "$1"); // strip @ but keep the username
   t = t.replace(/#\S+/g,             ""); // #hashtags
   t = t.replace(EMOJI_RE,            ""); // emoji / symbols
   t = t.replace(/(.)\1{4,}/gu, "$1$1");  // collapse spam chars (aaaaa -> aa)
 
-  // User-defined replacements, then skip-words
+  // User-defined replacements, then skip-words.
+  // (?<![^\s]) / (?![^\s]) ensures the pattern only matches when surrounded by
+  // whitespace or string edges, so "e"→"em" won't fire inside "che", "xem", etc.
   for (const r of (state.ttsReplacements || [])) {
     if (!r.from) continue;
-    t = t.replace(new RegExp(r.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), r.to || "");
+    const esc = r.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    t = t.replace(new RegExp("(?<![^\\s])" + esc + "(?![^\\s])", "gi"), r.to || "");
   }
   for (const w of (state.ttsSkipWords || [])) {
     if (!w) continue;
-    t = t.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "");
+    const esc = w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    t = t.replace(new RegExp("(?<![^\\s])" + esc + "(?![^\\s])", "gi"), "");
   }
 
   return t.replace(/\s+/g, " ").trim();
