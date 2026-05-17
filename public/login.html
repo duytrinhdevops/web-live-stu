@@ -84,10 +84,42 @@
       margin-bottom: 16px;
       display: none;
     }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #64748b; font-size: 12px; text-decoration: none;
+      margin-bottom: 20px; transition: color .15s;
+    }
+    .back-link:hover { color: #a78bfa; }
+    .trial-box {
+      background: rgba(124,58,237,.08);
+      border: 1px solid rgba(124,58,237,.25);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 18px;
+      text-align: center;
+    }
+    .trial-box p {
+      font-size: 12px; color: #94a3b8; margin-bottom: 10px; line-height: 1.55;
+    }
+    .trial-box p strong { color: #a78bfa; }
+    .contact-btns {
+      display: flex; gap: 8px; justify-content: center;
+    }
+    .contact-btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 8px 10px; border-radius: 8px;
+      font-size: 12px; font-weight: 700; text-decoration: none;
+      transition: opacity .15s, transform .1s;
+    }
+    .contact-btn:hover { opacity: .85; transform: translateY(-1px); }
+    .btn-zalo { background: linear-gradient(135deg, #006af5, #0099ff); color: #fff; }
+    .btn-fb   { background: linear-gradient(135deg, #1877f2, #0a5fd0); color: #fff; }
   </style>
 </head>
 <body>
   <div class="card">
+    <a href="/" class="back-link">&#8592; Quay lại trang chủ</a>
+
     <h1>TikTok Live Studio</h1>
     <p class="sub">Đăng nhập để tiếp tục</p>
 
@@ -100,6 +132,18 @@
       <input id="password" type="password" autocomplete="current-password" required />
       <button id="btnLogin" type="submit">Đăng nhập</button>
     </form>
+
+    <div class="trial-box">
+      <p>Chưa có tài khoản? Liên hệ admin để được cấp<br><strong>tài khoản dùng thử miễn phí 7 ngày</strong></p>
+      <div class="contact-btns">
+        <a href="https://zalo.me/0964918976" target="_blank" rel="noopener" class="contact-btn btn-zalo">
+          💬 Zalo
+        </a>
+        <a href="https://www.facebook.com/duy.trinh.07" target="_blank" rel="noopener" class="contact-btn btn-fb">
+          📘 Facebook
+        </a>
+      </div>
+    </div>
   </div>
 
   <script>
