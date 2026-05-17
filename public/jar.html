@@ -113,7 +113,7 @@
     addEventListener('resize', resize);
 
     // ── Physics engine ────────────────────────────────────────────────────
-    const engine = Engine.create({ gravity: { x:0, y:1.0 } });
+    const engine = Engine.create({ gravity: { x:0, y:1.0 }, enableSleeping: true });
     engine.positionIterations  = 6;
     engine.velocityIterations  = 4;
     engine.constraintIterations = 2;
@@ -241,10 +241,11 @@
 
       const body = Bodies.circle(x, y, physR, {
         friction:        gift.friction,
-        frictionAir:     0.05,
+        frictionAir:     0.06,
         frictionStatic:  gift.friction * 0.8,
         restitution:     gift.bounce,
         density:         0.004,
+        sleepThreshold:  30,
         collisionFilter: { category: CAT_GIFT, mask: CAT_WALL | CAT_GIFT }
       });
       Body.setVelocity(body, { x: (Math.random()-0.5)*0.3, y: 2.5 + Math.random()*0.8 });
@@ -482,6 +483,18 @@
       // Step physics by actual elapsed time — stays real-speed at any FPS
       const stepDt = dt / SUBSTEPS;
       for(let i = 0; i < SUBSTEPS; i++) Engine.update(engine, stepDt);
+
+      // Clamp gift velocities: prevent tunneling and upward escape through jar mouth
+      const V_MAX = 22, V_UP = 5;
+      for (let i = 0; i < gifts.length; i++) {
+        const b = gifts[i].body;
+        if (b.isStatic || b.isSleeping) continue;
+        const vx = b.velocity.x, vy = b.velocity.y;
+        const nx = vx < -V_MAX ? -V_MAX : vx > V_MAX ? V_MAX : vx;
+        const ny = vy < -V_UP  ? -V_UP  : vy > V_MAX ? V_MAX : vy;
+        if (nx !== vx || ny !== vy) Body.setVelocity(b, { x: nx, y: ny });
+      }
+
       pruneGifts();
       ctx.clearRect(0, 0, VW, VH);
 
