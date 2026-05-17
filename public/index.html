@@ -1214,18 +1214,41 @@
 
     const ttsQueue  = [];
     let   ttsPlaying = false;
+    let   _ttsAc    = null;
 
-    function playNext() {
+    function getTtsAc() {
+      if (!_ttsAc || _ttsAc.state === 'closed')
+        _ttsAc = new (window.AudioContext || window.webkitAudioContext)();
+      return _ttsAc;
+    }
+
+    async function playNext() {
       if (ttsQueue.length === 0) { ttsPlaying = false; return; }
       ttsPlaying = true;
-      const item  = ttsQueue.shift();
-      const audio = new Audio(`/tts-audio?text=${encodeURIComponent(item.text)}&lang=${encodeURIComponent(item.lang)}`);
-      audio.volume       = Math.min(1, Math.max(0, item.volume / 100));
-      audio.playbackRate = Math.min(4, Math.max(0.25, item.rate / 100));
-      let advanced = false;
-      const advance = () => { if (advanced) return; advanced = true; setTimeout(playNext, 150); };
-      audio.onended = advance; audio.onerror = advance;
-      audio.play().catch(advance);
+      const item = ttsQueue.shift();
+      try {
+        const url  = `/tts-audio?text=${encodeURIComponent(item.text)}&lang=${encodeURIComponent(item.lang)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const buf  = await resp.arrayBuffer();
+        if (!buf.byteLength) throw new Error('empty');
+        const ac       = getTtsAc();
+        await ac.resume();
+        const audioBuf = await ac.decodeAudioData(buf);
+        const src  = ac.createBufferSource();
+        src.buffer = audioBuf;
+        src.playbackRate.value = Math.min(4, Math.max(0.25, item.rate / 100));
+        const gain = ac.createGain();
+        gain.gain.value = item.volume / 100;
+        const comp = ac.createDynamicsCompressor();
+        comp.threshold.value = -12; comp.knee.value = 6;
+        comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.1;
+        src.connect(gain); gain.connect(comp); comp.connect(ac.destination);
+        src.onended = () => setTimeout(playNext, 80);
+        src.start();
+      } catch(e) {
+        setTimeout(playNext, 150);
+      }
     }
 
     socket.on('ttsSpeak', item => {
