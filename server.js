@@ -351,7 +351,8 @@ async function connectRoom(roomId, uniqueId) {
   const conn = new WebcastPushConnection(cleanId, {
     processInitialData:       false,
     enableWebsocketUpgrade:   false,
-    requestPollingIntervalMs: 1000
+    requestPollingIntervalMs: 1000,
+    signApiKey: process.env.SIGN_API_KEY || null
   });
 
   conn.on("gift", data => {

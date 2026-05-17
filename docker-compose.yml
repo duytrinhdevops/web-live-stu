@@ -14,6 +14,7 @@ services:
       - ./data/users.json:/app/users.json
     environment:
       - BEHIND_PROXY=1
+      - SIGN_API_KEY=${SIGN_API_KEY:-}
 
   nginx:
     image: nginx:alpine

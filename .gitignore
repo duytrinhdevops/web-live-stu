@@ -5,3 +5,4 @@ configs/
 presets/
 users.json
 .claude/
+.env
