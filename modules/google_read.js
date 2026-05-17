@@ -132,6 +132,32 @@ function register(app, io, getRoom, saveRoomConfig) {
   });
 }
 
+// Split text into language segments so English words get English TTS.
+// Only applied when baseLang is "vi" — other languages don't need splitting.
+// English segment = 3+ consecutive ASCII letters surrounded by word boundary.
+function splitByLang(text, baseLang) {
+  if (baseLang !== "vi") return [{ text, lang: baseLang }];
+
+  // split() with a capturing group keeps the matched parts in the result array.
+  // Odd indexes = English words (captured), even indexes = Vietnamese gaps.
+  const parts = text.split(/(\b[a-zA-Z]{4,}\b)/g);
+  const raw = parts.map((t, i) => ({
+    text: t.replace(/\s+/g, " ").trim(),
+    lang: i % 2 === 1 ? "en" : "vi"
+  })).filter(s => s.text);
+
+  // Merge consecutive segments of the same language
+  const merged = [];
+  for (const s of raw) {
+    if (merged.length && merged[merged.length - 1].lang === s.lang) {
+      merged[merged.length - 1].text += " " + s.text;
+    } else {
+      merged.push({ text: s.text, lang: s.lang });
+    }
+  }
+  return merged.filter(s => s.text.trim());
+}
+
 function attachChatListener(conn, roomId, io, getState) {
   conn.on("chat", data => {
     const raw = (data.comment || "").trim();
@@ -140,12 +166,17 @@ function attachChatListener(conn, roomId, io, getState) {
     if (!state || !state.ttsEnabled) return;
     const text = processText(raw, state);
     if (!text) return;
-    io.to(roomId).emit("ttsSpeak", {
-      text,
-      lang:   state.ttsLang   || "vi",
-      volume: state.ttsVolume ?? 80,
-      rate:   state.ttsRate   ?? 100
-    });
+
+    // Split into language segments — client queue plays them in order
+    const segments = splitByLang(text, state.ttsLang || "vi");
+    for (const seg of segments) {
+      io.to(roomId).emit("ttsSpeak", {
+        text:   seg.text,
+        lang:   seg.lang,
+        volume: state.ttsVolume ?? 80,
+        rate:   state.ttsRate   ?? 100
+      });
+    }
   });
 }
 
